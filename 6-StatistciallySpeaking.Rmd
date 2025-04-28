@@ -1,6 +1,8 @@
 ---
 title: "Final Project Proposal STAT167"
-author: "Shreya Mohan, Kalyani Mantirraju, Crystal Arevalo, Karen Alvarez, Mason Lam"
+author: 
+  - "Group Name: Statistically Speaking"
+  - "Shreya Mohan, Kalyani Mantirraju, Crystal Arevalo, Karen Alvarez, Mason Lam"
 date: "04/27/2025"
 format:
   html:
@@ -12,6 +14,7 @@ format:
     code-line-numbers: true
     fontsize: 10pt
 ---
+
 
 # Installation & Packages
 
