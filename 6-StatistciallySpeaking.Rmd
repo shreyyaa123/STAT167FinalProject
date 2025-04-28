@@ -149,14 +149,25 @@ We can join the data tables by combining them through similar attributes, such a
 
 
 ## EDA:
-
+## Summary Statistics & Check for Missing Values:
 ```{r}
 summary(flights)
+colSums(is.na(flights))
+
 summary(airlines)
+colSums(is.na(airlines))
+
 summary(airports)
+colSums(is.na(airports))
+
 summary(planes)
+colSums(is.na(planes))
+
 summary(weather)
+colSums(is.na(weather))
 ```
+
+
 
 # Analysis Approach Plan:
 
