@@ -15,12 +15,21 @@ format:
     fontsize: 10pt
 ---
 
+
+
+
 # Installation & Packages
+
+
+
 
 ```{r}
 library(nycflights13)
 library(tidyverse)
 ```
+
+
+
 
 # Introduction
 
@@ -57,6 +66,9 @@ The following questions will guide the analysis:
 
 ## 1. Flights dataset: All flights that departed from NYC in 2013
 
+
+
+
 ```{r}
 head(flights)
 dim(flights)
@@ -64,6 +76,9 @@ names(flights)
 str(flights)
 glimpse(flights)
 ```
+
+
+
 
 ### Variables:
 
@@ -80,6 +95,9 @@ glimpse(flights)
 
 ## 2. Airlines dataset: Translation between two letter carrier codes and names
 
+
+
+
 ```{r}
 head(airlines)
 dim(airlines)
@@ -87,6 +105,9 @@ names(airlines)
 str(airlines)
 glimpse(airlines)
 ```
+
+
+
 
 ### Variables:
 
@@ -96,6 +117,9 @@ glimpse(airlines)
 
 ## 3. Airports dataset: Airport names and locations
 
+
+
+
 ```{r}
 head(airports)
 dim(airports)
@@ -103,6 +127,9 @@ names(airports)
 str(airports)
 glimpse(airports)
 ```
+
+
+
 
 ### Variables:
 
@@ -113,6 +140,9 @@ glimpse(airports)
 
 ## 4. Planes dataset: Construction information about each plane
 
+
+
+
 ```{r}
 head(planes)
 dim(planes)
@@ -120,6 +150,9 @@ names(planes)
 str(planes)
 glimpse(planes)
 ```
+
+
+
 
 ### Variables:
 
@@ -133,6 +166,9 @@ glimpse(planes)
 
 ## 5. Weather dataset: Hourly meterological data for each airport
 
+
+
+
 ```{r}
 head(weather)
 dim(weather)
@@ -140,6 +176,9 @@ names(weather)
 str(weather)
 glimpse(weather)
 ```
+
+
+
 
 ### Variables:
 
@@ -160,6 +199,9 @@ We can join the data tables by combining them through similar attributes, such a
 
 ## Summary Statistics & Check for Missing Values:
 
+
+
+
 ```{r}
 summary(flights)
 colSums(is.na(flights))
@@ -177,6 +219,9 @@ summary(weather)
 colSums(is.na(weather))
 ```
 
+
+
+
 # Analysis Approach Plan:
 
 **Assumptions:** All variables are independent
@@ -186,3 +231,4 @@ The process of analysis will involve data cleaning after forming our question, b
 # Alternative Strategies & Back Up Plan:
 
 As a backup idea, we are planning on seeing if there is any correlation between the amount of delays present in the different airports. Our data deals with the airports EWR, JFK, and LGA which are all different airports within New York City. Our first question is to figure out if the JFK airport has a different amount of delays compared to LGA or EWR if there is a higher amount of precipitation in the JFK area. Although all the airports are in New York, within the different areas of the city, there can be different amounts of precipitation and rainfall that occur. Our second question is to decide whether the different airports have different models of planes and if the difference affects the amounts of delays. For example if a plane is older or a different configuration, does that lead to more delays due to cleaning or maintenance? And lastly, our third question is whether the three different airports have different airlines coming in and out and if these differing airlines affect the amount of delays present on a given day. For example, if Delta services one airport and not another, does that increase or decrease the amount of total delays for an airport. These questions can be further investigated if our first set of questions are not approved or if we need more content to explore within our project. These sets of backup questions will further explore the flight data we have.
+
