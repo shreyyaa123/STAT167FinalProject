@@ -178,20 +178,115 @@ colSums(is.na(weather))
 head(flights)
 ```
 
+## Most of our analysis is based on how other variables and datasets affect and compare to the flights dataset. We are seeing how the arrival time, departure delay time, departure time, arrival delay time, and other variables are affected. 
 
 
+#flights that were not canceled
+## We will be using these the not_canceled data for the rest of the EDA
+```{r}
+not_canceled <- filter(flights, !is.na(dep_delay), !is.na(arr_delay))
+not_canceled
+```
 
 
+#Basic delay analysis
+## Distribution and Proportion of delayed flights that were not canceled
+```{r}
+#histograms
+hist(not_canceled$dep_delay, breaks=100, main = "Departure Delays",xlab = "Minutes")
+hist(not_canceled$arr_delay, breaks=100, main ="Arrival Delays", xlab = "Minutes")
+
+#proportions
+mean(not_canceled$dep_delay>0, na.rm=TRUE)
+mean(not_canceled$arr_delay>0, na.rm=TRUE)
+```
+#most of the departure delays do not go over 200 minutes and the arrival delays have very few delays past 200 minutes.
 
 
+#Delay patterns
+```{r}
+#convert time to hours
+not_canceled$dep_hour <-floor(not_canceled$sched_dep_time/100)
+not_canceled$arr_hour <-floor(not_canceled$sched_arr_time/100)
+
+#plot
+not_canceled |>
+  group_by(dep_hour) |>
+  summarize(mean_dep_delay = mean(dep_delay, na.rm=TRUE))|>
+  ggplot(aes(x=dep_hour, y =mean_dep_delay))+
+  geom_line()+
+  geom_point()+
+  labs(title = "Average Departure Delay by Hour", x="Scheduled Departure", y="Minutes")
+
+```
+#We can see that many of the delays happen further in the day and peak at about 18 hours and then it descends from there. 
 
 
+#Delays by Airport
+```{r}
+not_canceled |>
+  group_by(origin)|>
+  summarize(avg_dep_delay= mean(dep_delay, na.rm=TRUE), avg_arr_delay= mean(arr_delay, na.rm=TRUE))
+```
+#EWR has the highest average departure and arrival delay followed by JFK and then LGA
 
 
+#Ranking airlines by delay
+```{r}
+not_canceled|>
+  group_by(carrier)|>
+  summarize(avg_dep_delay = mean(dep_delay, na.rn=TRUE))|>
+  arrange(desc(avg_dep_delay))
+
+```
+#F9 has the highest average departure delay at 20 hours.
 
 
+#Check to see if the flights that were delayed made up the time in the air
+```{r}
+not_canceled|>
+  mutate(made_up_time = dep_delay- arr_delay)|>
+  ggplot(aes(x=made_up_time))+
+  geom_histogram(bins=100)+
+  labs(titel="Made up Time in Air", x= "Minutes Saved", y="Count")
+
+```
+#We can see that the majority of the flights did not save any minutes on the arrival delay and actually ended up being delayed more. Some flights did in fact save minutes but it was less than 50% of all flights.
 
 
+#Delays by Month
+```{r}
+not_canceled|>
+  group_by(month)|>
+  summarize(mean_dep_delay=mean(dep_delay, na.rm=TRUE))|>
+  ggplot(aes(x=month, y=mean_dep_delay))+
+  geom_line()+
+  geom_point()+
+  labs(title = "Monthly Departure Delays", x="Month", y="Minutes")
+
+```
+#we see that the majority of flights are delayed from May to mid July, and there is another peak at December. The months with the shorest delays are September and October.
+
+
+#Does distance affect the amount of delays?
+```{r}
+ggplot(not_canceled, aes(x=distance, y=dep_delay))+
+  geom_point(alpha=0.2)+
+  geom_smooth(method = "lm", se=TRUE,color= "Pink")+
+  labs(title = "Distance vs Departure Delay", x="Distance", y="Departure Delay")
+
+```
+#We can see that there is not much of an effect of Distance on Departure delay.
+
+
+#Flights traveled the longest by distance
+```{r}
+longest_Distance <- not_canceled|>
+arrange(desc(distance))|>
+select(carrier, origin, dest)
+longest_Distance
+```
+#We see that HA is the carrier with the longest flights and they all start at JFK airport and land at HNL.
 
 
 
