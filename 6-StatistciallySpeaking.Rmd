@@ -171,6 +171,110 @@ colSums(is.na(weather))
 ```
 
 
+# EDA for Weather Data
+
+```{r}
+
+head(weather)
+
+# Related Questions from our Proposal:
+# --- How do weather conditions affect flight delays? 
+# --- How do environmental factors like humidity, visibility, and wind affect flight delays? 
+# --- What impact does precipitation have on specific airports and weather-related delays? 
+
+
+# Average Temperature by Month
+# --- We can see that the average temperature ranges from about 70-80º in the summer, and 35-40º in the winter. 
+# --- When answering our research questions, we can see if there is a correlation between summer/winter weather and flight delays.
+
+monthlyavgtemp <- weather %>%
+  group_by(month) %>%
+  summarise(monthlyavgtemp = mean(temp, na.rm = TRUE))
+
+ggplot(data = monthlyavgtemp,
+       aes(x = factor(month), y = monthlyavgtemp)) +
+  geom_col(color = "skyblue", fill = "lightskyblue1") + 
+  labs(title = "Average Temperature by Month",
+       x = "Month",
+       y = "Average Temperature (Fº)") +
+  theme_minimal()
+  
+
+# Average Visibility by Month
+# --- The average visibility does not greatly vary by month looking at the average value. However, we can see that there is slightly less visiblity in winter months.
+# --- Looking at the boxplots, we can see that there are a lot of outliers. Removing these outliers and focusing on visib < 10 shows us a better distribution of visiblity.
+# --- When answering our research questions, we can compare the average visibility during flight delays vs average visibility without flight       delays to further explore the role of visibility in flight delays. 
+
+monthlyavgvisib <- weather %>%
+  group_by(month) %>%
+  summarise(monthlyavgvisib = mean(visib, na.rm = TRUE))
+
+ggplot(data = monthlyavgvisib) +
+    geom_col(aes(x = factor(month), y = monthlyavgvisib),
+                   color = "orchid4", fill = "plum") + 
+  labs(title = "Average Visibility by Month",
+       x = "Month",
+       y = "Average Visibility") +
+  theme_minimal()
+
+ggplot(weather, aes(x = factor(month), y = visib)) +
+  geom_boxplot(fill = "plum", color = "orchid4") +
+  labs(title = "Distribution of Visibility by Month",
+       x = "Month",
+       y = "Visibility") +
+  coord_flip() +
+  theme_minimal()
+
+ggplot(filter(weather, visib < 10), aes(x = factor(month), y = visib)) +
+  geom_boxplot(fill = "plum", color = "orchid4") +
+  labs(title = "Distribution of Visibility < 10 by Month",
+       x = "Month",
+       y = "Visibility") +
+  coord_flip() +
+  theme_minimal()
+
+
+# Distribution of Humidity by Month
+# --- The distribution of humidity varies by month, but there does not seem to be significant differences.
+# --- We can further explore the role of humidity by comparing it to other weather variables and flight delays.
+
+ggplot(weather, aes(x = factor(month), y = humid)) +
+  geom_boxplot(fill = "darkseagreen2", color = "darkgreen") +
+  labs(title = "Distribution of Humidity by Month (With Outliers)",
+       x = "Month",
+       y = "Humidity") +
+  coord_flip() +
+  theme_minimal()
+
+
+# Precipitation by Month
+# --- The average precipitation for each month varies greatly. We can see that spring months have the greatest average precipitation.
+# --- When answering our research question, we can see if greater precipitation correlates to flight delays. 
+
+monthlyprecip <- weather %>%
+  group_by(month) %>%
+  summarise(avgmonthlyprecip = mean(precip, na.rm = TRUE))
+
+ggplot(monthlyprecip, aes(x = month, y = avgmonthlyprecip)) +
+  geom_line(color = "palevioletred2") +
+  geom_point(color = "palevioletred4") +
+  labs(title = "Average Monthly Precipitation",
+       x = "Month",
+       y = "Average Precipitation") +
+  scale_x_continuous(breaks = 1:12) +
+  theme_minimal()
+
+
+# Correlation Between Variables
+# --- We can explore the correlation between different weather variables and see how they may work together to impact flight delays.
+
+cor(weather$precip, weather$visib, use = "complete.obs")
+cor(weather$humid, weather$visib, use = "complete.obs")
+
+
+```
+
+
 
 # Analysis Approach Plan:
 
