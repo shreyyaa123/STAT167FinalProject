@@ -172,6 +172,28 @@ colSums(is.na(weather))
 
 
 
+
+## FLIGHTS EDA:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Analysis Approach Plan:
 
 **Assumptions:** All variables are independent
