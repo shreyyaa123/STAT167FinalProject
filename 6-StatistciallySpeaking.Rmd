@@ -158,6 +158,14 @@ We can join the data tables by combining them through similar attributes, such a
 
 ## EDA:
 
+## Airlines Dataset EDA
+
+Dimensions and column names of the airlines dataset
+```{r}
+dim(airlines)
+colnames(airlines)
+```
+
 ## Summary Statistics & Check for Missing Values:
 
 ```{r}
@@ -176,6 +184,7 @@ colSums(is.na(planes))
 summary(weather)
 colSums(is.na(weather))
 ```
+
 
 ## Planes Dataset EDA
 
