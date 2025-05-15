@@ -199,6 +199,7 @@ flights_weather <- left_join(not_canceled, weather, by = c("year", "month", "day
 
 flights_weather <- flights_weather |>
   filter(!is.na(dep_delay))
+flights_weather
 ```
 
 Temperature by month and departure delays
@@ -237,7 +238,7 @@ ggplot(f_w_by_month, aes(x = precip, y = dep_delay)) +
   facet_wrap(~ month, ncol = 3)
 
 ggplot(f_w_by_month, aes(x = precip, y = dep_delay)) +
-  geom_boxplot()
+  geom_bar(stat = "identity")
 ```
 
 ```{r}
@@ -246,6 +247,8 @@ weather_vars <- f_w_by_month |>
 #filter out extreme
 weather_vars <- filter(weather_vars, dep_delay <= 300)
 cor(weather_vars, use = "complete.obs")
+
+summary(f_w_by_month$precip)
 ```
 
 -   Visibility and departure delay has the weakest negative correlation
@@ -257,10 +260,11 @@ Time Series (Precipitation and Departure Delay)
 ```{r}
 daily_data <- f_w_by_month |>
   group_by(year, month, day) |>
-  summarize(
+  summarise(
     mean_delay = mean(dep_delay, na.rm = TRUE),
     mean_temp = mean(temp, na.rm = TRUE),
-    mean_wind = mean(wind_speed, na.rm = TRUE),
+    mean_humid = mean(humid, na.rm = TRUE),
+    mean_precip = mean(precip, na.rm = TRUE),
     .groups = "keep"
   )
 #make the date column 
@@ -271,10 +275,24 @@ daily_data <- mutate(daily_data,
 ggplot(daily_data, aes(x = date)) +
   geom_line(aes(y = mean_delay, color = "Delay")) +
   geom_line(aes(y = mean_temp, color = "Temperature")) +
-  geom_line(aes(y = mean_wind, color = "Wind Speed")) 
-```
+  scale_y_continuous(sec.axis = sec_axis(~., name = "Temperature (F)")) +
+  labs(title = "Daily Average Delay vs. Temperature", y = "Delay (mins)") +
+  theme_minimal()
 
-Need to address arrival delay
+ggplot(daily_data, aes(x = date)) +
+  geom_line(aes(y = mean_delay, color = "Delay")) +
+  geom_line(aes(y = mean_humid, color = "Humidity")) +
+  scale_y_continuous(sec.axis = sec_axis(~., name = "Relative Humidity")) +
+  labs(title = "Daily Average Delay vs. Humidity", y = "Delay (mins)") +
+  theme_minimal()
+
+ggplot(daily_data, aes(x = date)) +
+  geom_line(aes(y = mean_delay, color = "Delay")) +
+  geom_line(aes(y = mean_precip, color = "Precipitation")) +
+  scale_y_continuous(sec.axis = sec_axis(~., name = "Inches")) +
+  labs(title = "Daily Average Delay vs. Humidity", y = "Delay (mins)") +
+  theme_minimal()
+```
 
 # Analysis Approach Plan:
 
