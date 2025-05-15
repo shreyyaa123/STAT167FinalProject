@@ -289,6 +289,21 @@ longest_Distance
 #We see that HA is the carrier with the longest flights and they all start at JFK airport and land at HNL.
 
 
+#arrival delays per carrier
+```{r}
+carrier_Dest<-not_canceled |>
+  group_by(carrier, dest) |>
+  summarize(avg_arr_Delay = mean(arr_delay, na.rm= TRUE), .group= "drop")
+  ggplot(carrier_Dest, aes(x = reorder(carrier, avg_arr_Delay, median), y= avg_arr_Delay))+
+  geom_boxplot()+
+  coord_flip()+
+  labs(title = "Average Arrival Delay by Carrier",x = "Carrier", y= "Average Arrival Delay")+
+  theme_minimal()
+```
+
+
+
+
 
 
 
