@@ -1,0 +1,73 @@
+
+```{r}
+##################### Airport EDA ##############################################################
+
+# Airports: Looking at the variation of flight delays between airports
+
+flights_mod <- flights |>
+  mutate(month = factor(month, levels = 1:12, labels = month.abb))
+
+delays_airport <- flights_mod |>
+  group_by(origin) |>
+  summarise(mean_delay = mean(dep_delay, na.rm = TRUE),
+            median_delay = median(dep_delay, na.rm = TRUE),
+            sd_delay = sd(dep_delay, na.rm = TRUE))
+airport_avg_delay <- ggplot(delays_airport, aes(x = origin, y = mean_delay, fill = origin)) +
+  geom_bar(stat = "identity", show.legend = FALSE) +
+  labs(title = "Average Flight Delays by Airport", x = "Airport", y = "Average Delay (minutes)")
+
+# Airports: Looking at variation of cancelled flights by airports over a period of 12 months 
+
+cancelled_flights <- flights_mod |>
+  filter(!is.na(month)) |>
+  group_by(origin, month) |>
+  summarise(cancelled = sum(is.na(dep_time)))
+
+airport_cancelled_month <- ggplot(cancelled_flights, aes(x = month, y = cancelled, fill = origin)) +
+  geom_bar(stat = "identity", position = "dodge", show.legend = FALSE) +
+  facet_wrap(~origin) +
+  coord_flip() +
+  labs(title = "Cancelled flights by Airport and by Month", x = "Month", y = "Number of Cancelled Flights")
+
+# Airports: Looking at the flight patterns for each airport over a period of 12 months 
+flight_patterns <- flights_mod |>
+  group_by(origin, month) |>
+  summarise(avg_flights = n() / length(unique(day)), .groups = "drop")
+
+airport_avg_flight_month <- ggplot(flight_patterns, aes(x = month, y = avg_flights, color = origin, group = origin)) +
+  geom_line() +
+  labs(title = "Average Flight Patterns from Airport by Month", x = "Month", y = "Average Number of Flights")
+
+# Airports: Looking at carriers departing from airports over a period of 12 months 
+flights_with_airlines <- flights_mod |>
+  left_join(airlines, by = "carrier")
+
+carrier_variation <- flights_with_airlines |>
+  group_by(origin, name, month)
+
+airport_carriers_month <- ggplot(carrier_variation, aes(x = name, y = month, fill = name)) +
+  geom_bar(stat = "identity", position = "dodge", show.legend = FALSE) + 
+  facet_wrap(~origin) +
+  coord_flip() +
+  labs(title = "Variation of Carriers Departing from Airports", x = "Carrier", y = "Number of Flights")
+
+# Airports: Plots
+airport_avg_delay
+airport_cancelled_month
+airport_avg_flight_month
+airport_carriers_month
+
+# Summary: 
+# 1: When looking at the Average Flight Delays we can see that Newark Liberty Airport (EWR) has the highest flight delays averaging at 15 minutes, followed by John F. Kennedy Airport (JFK) and LaGuardia Airport (LGA). Based on this information, further investigation into potential causes like weather and airline operations could provide more information concerning the delays at EWR. 
+
+# 2. When looking at cancelled flights by airport and month, distinct patterns emerge for EWR, JFK, and LGA. EWR experiences a higher frequency of cancellations throughout the year, with notable peaks in February, March, and December. This may be attributed to winter weather and holiday congestion. JFK generally has fewer cancellations, expect for a significant spike in February, this may also be weather-related as this pattern is seen in EWR. LGA shows variability in cancellations, with higher instances during the summer months and December, possibly influenced by seasonal weather and holiday travel. These patterns suggest that weather conditions and holiday would be worth investigating to better understand their effects on flight delays. 
+
+# 3. The line plot illustrating average flight patterns by month reveals distinct seasonal trends for each airport. EWR exhibits a significant peak in April, averaging 350 flights, followed by a gradual decrease for the remainder of the year. JFK displays more fluctuation throughout the year, with its highest average number of flights, just under 325, occurring during the summer months, followed by a decrease and a slight uptick during the holiday season. LGA, while experiencing the lowest overall flight numbers, shows a gradual incrase with a peak in October, followed by a decline. These patterns may suggest that EWR and JFK, as international airports, are more influenced by seasonal travel trends, whereas LGA, with its domestic focus, shows a more consistent traffic flow.
+
+#4. The bar chart shows the distribution of flights by carrier for each airport. EWR and JFK have a variety of carriers, while LGA shows a more concentrated distribution with fewer carriers. The variety of carriers at EWR and JFK may contribute to increased operational complexity and may potentially lead to higher delays. While LGA's more concentrated carriers might allow for efficient operations, however this isn't the case as LGA experienced a higher number of cancelled flights. This would be interesting to investigate is it implies that factors other than weather, such as operational or logistical challenges, could be influecing flight delays and cancellations. 
+
+##################### Airport EDA ######################################################################
+```
+
+
+
