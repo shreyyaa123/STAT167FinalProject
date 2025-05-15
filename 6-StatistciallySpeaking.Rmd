@@ -15,7 +15,6 @@ format:
     fontsize: 10pt
 ---
 
-
 # Installation & Packages
 
 ```{r}
@@ -28,9 +27,11 @@ library(tidyverse)
 The primary goal of this research is to explore factors influencing flight delays from New City airports in 2013.
 
 # Problem Statement and Motivation
-Understanding factors that contribute to flight delays is critical for informing Federal Aviation Administration (FAA) policies and guiding airlines and airports in improving operational efficiency, enhancing weather preparedness, and reducing delays through controllable factors. By analyzing weather conditions, airline differences, holiday effects, fleet age, and airport specific challenges, this research can provide data-driven insights to optimize air travel and ensure compliance with aviation regulations in heavily congested areas like New York City. 
+
+Understanding factors that contribute to flight delays is critical for informing Federal Aviation Administration (FAA) policies and guiding airlines and airports in improving operational efficiency, enhancing weather preparedness, and reducing delays through controllable factors. By analyzing weather conditions, airline differences, holiday effects, fleet age, and airport specific challenges, this research can provide data-driven insights to optimize air travel and ensure compliance with aviation regulations in heavily congested areas like New York City.
 
 # Main Research Question
+
 What are the key correlations between flight delays from NYC airports?
 
 ## Sub-questions:
@@ -55,6 +56,7 @@ The following questions will guide the analysis:
 # Datasets
 
 ## 1. Flights dataset: All flights that departed from NYC in 2013
+
 ```{r}
 head(flights)
 dim(flights)
@@ -77,6 +79,7 @@ glimpse(flights)
     -   time_hour : scheduled date and hour of the flight as POSIXct date
 
 ## 2. Airlines dataset: Translation between two letter carrier codes and names
+
 ```{r}
 head(airlines)
 dim(airlines)
@@ -92,6 +95,7 @@ glimpse(airlines)
     -   name : full name of the airlines
 
 ## 3. Airports dataset: Airport names and locations
+
 ```{r}
 head(airports)
 dim(airports)
@@ -106,8 +110,9 @@ glimpse(airports)
     -   faa : FAA airport code
     -   name : usual name of the airport
     -   lat, lon : location of airport
-    
+
 ## 4. Planes dataset: Construction information about each plane
+
 ```{r}
 head(planes)
 dim(planes)
@@ -125,8 +130,9 @@ glimpse(planes)
     -   engines, seats : number of engines and seats
     -   speed : average cruising speed in mph
     -   engine : type in engine
-    
+
 ## 5. Weather dataset: Hourly meterological data for each airport
+
 ```{r}
 head(weather)
 dim(weather)
@@ -150,9 +156,10 @@ glimpse(weather)
 
 We can join the data tables by combining them through similar attributes, such as combining flights : time_hour with weather : time_hour.
 
-
 ## EDA:
+
 ## Summary Statistics & Check for Missing Values:
+
 ```{r}
 summary(flights)
 colSums(is.na(flights))
@@ -170,7 +177,107 @@ summary(weather)
 colSums(is.na(weather))
 ```
 
+# Analysis Questions: 1.) How do weather conditions affect flight delays?
 
+**Subquestions:**
+
+a.  Are specific weather variables (e.g., precipitation, wind speed, humidity) correlated with departure and arrival delays?
+
+flights_weather \<- left_join(not_canceled, weather, by = c("year", "month", "day", "hour", "origin"))
+
+```{r}
+head(weather)
+head(flights)
+
+not_canceled <- filter(flights, !is.na(dep_delay), !is.na(arr_delay))
+head(not_canceled)
+
+```
+
+join columns of weather and uncancelled flights
+
+```{r}
+flights_weather <- left_join(not_canceled, weather, by = c("year", "month", "day", "hour", "origin"))
+
+flights_weather <- flights_weather |>
+  filter(!is.na(dep_delay))
+```
+
+Temperature by month and departure delays
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+
+f_w_by_month <- flights_weather |>
+  mutate(month = factor(month, levels = 1:12, labels = month.name))
+
+ggplot(f_w_by_month, aes(x = temp, y = dep_delay)) + 
+  geom_point() +
+  facet_wrap(~ month, ncol = 3)
+
+ggplot(f_w_by_month, aes(x = temp, y = dep_delay)) +
+  geom_bar(stat = "identity")
+```
+
+Humidity by month and departure delays
+
+```{r}
+ggplot(f_w_by_month, aes(x = humid, y = dep_delay)) + 
+  geom_point() +
+  facet_wrap(~ month, ncol = 3)
+
+ggplot(f_w_by_month, aes(x = humid, y = dep_delay)) +
+  geom_bar(stat = "identity")
+```
+
+Precipitation by month and departure delays
+
+```{r}
+ggplot(f_w_by_month, aes(x = precip, y = dep_delay)) + 
+  geom_point() +
+  facet_wrap(~ month, ncol = 3)
+
+ggplot(f_w_by_month, aes(x = precip, y = dep_delay)) +
+  geom_boxplot()
+```
+
+```{r}
+weather_vars <- f_w_by_month |>
+  select(temp, wind_speed, precip, visib, dep_delay)
+#filter out extreme
+weather_vars <- filter(weather_vars, dep_delay <= 300)
+cor(weather_vars, use = "complete.obs")
+```
+
+-   Visibility and departure delay has the weakest negative correlation
+
+-   Strongest positive linear relationship is between precipitation and departure delay
+
+Time Series (Precipitation and Departure Delay)
+
+```{r}
+library(zoo)
+daily_data <- f_w_by_month |>
+  group_by(year, month, day) |>
+  summarize(
+    mean_delay = mean(dep_delay, na.rm = TRUE),
+    mean_temp = mean(temp, na.rm = TRUE),
+    mean_wind = mean(wind_speed, na.rm = TRUE),
+    .groups = "keep"
+  )
+
+daily_data <- mutate(daily_data, 
+                     monthly_num = match(month, month.name),
+                     date = as.Date(paste(year, monthly_num, day, sep = "-")))
+
+ggplot(daily_data, aes(x = date)) +
+  geom_line(aes(y = mean_delay, color = "Delay")) +
+  geom_line(aes(y = mean_temp, color = "Temperature")) +
+  geom_line(aes(y = mean_wind, color = "Wind Speed")) 
+```
+
+Need to address arrival delay
 
 # Analysis Approach Plan:
 
