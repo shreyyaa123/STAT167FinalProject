@@ -183,8 +183,6 @@ colSums(is.na(weather))
 
 a.  Are specific weather variables (e.g., precipitation, wind speed, humidity) correlated with departure and arrival delays?
 
-flights_weather \<- left_join(not_canceled, weather, by = c("year", "month", "day", "hour", "origin"))
-
 ```{r}
 head(weather)
 head(flights)
