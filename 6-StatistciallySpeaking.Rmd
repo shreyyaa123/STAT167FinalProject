@@ -257,7 +257,6 @@ cor(weather_vars, use = "complete.obs")
 Time Series (Precipitation and Departure Delay)
 
 ```{r}
-library(zoo)
 daily_data <- f_w_by_month |>
   group_by(year, month, day) |>
   summarize(
@@ -266,11 +265,11 @@ daily_data <- f_w_by_month |>
     mean_wind = mean(wind_speed, na.rm = TRUE),
     .groups = "keep"
   )
-
+#make the date column 
 daily_data <- mutate(daily_data, 
                      monthly_num = match(month, month.name),
                      date = as.Date(paste(year, monthly_num, day, sep = "-")))
-
+#delays and weather variables over time
 ggplot(daily_data, aes(x = date)) +
   geom_line(aes(y = mean_delay, color = "Delay")) +
   geom_line(aes(y = mean_temp, color = "Temperature")) +
