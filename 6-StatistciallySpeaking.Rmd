@@ -158,13 +158,6 @@ We can join the data tables by combining them through similar attributes, such a
 
 ## EDA:
 
-## Airlines Dataset EDA
-
-Dimensions and column names of the airlines dataset
-```{r}
-dim(airlines)
-colnames(airlines)
-```
 
 ## Summary Statistics & Check for Missing Values:
 
@@ -185,7 +178,61 @@ summary(weather)
 colSums(is.na(weather))
 ```
 
+## Airlines Dataset EDA
 
+Dimensions and column names of the airlines dataset
+```{r}
+dim(airlines)
+colnames(airlines)
+```
+
+Viewing all the Unique Airlines:
+```{r}
+airlines %>%
+  arrange(name)
+```
+```{r}
+# Join flights and airline names
+flights_airlines <- flights %>%
+  left_join(airlines, by = "carrier")
+
+# Average delay metrics
+avg_delays <- flights_airlines %>%
+  group_by(name) %>%
+  summarise(
+    avg_dep_delay = mean(dep_delay, na.rm = TRUE),
+    avg_arr_delay = mean(arr_delay, na.rm = TRUE),
+    flights = n()
+  )
+
+# Plot: Departure Delay
+ggplot(avg_delays, aes(x = reorder(name, avg_dep_delay), y = avg_dep_delay)) +
+  geom_col(fill = "tomato") +
+  coord_flip() +
+  labs(
+    title = "Average Departure Delay by Airline",
+    x = "Airline",
+    y = "Avg Departure Delay (min)"
+  )
+```
+We can see that on average, Frontier Airlines has the most departure delay at around 20 min, with ExpressJet roughly around the same 20 minutes. Less than half the Airlines seem to be past the 13 minute delay mark.
+
+```{r}
+cancel_rate <- flights_airlines %>%
+  mutate(cancelled = is.na(dep_delay)) %>%
+  group_by(name) %>%
+  summarise(cancel_rate = mean(cancelled), total_flights = n())
+
+ggplot(cancel_rate, aes(x = reorder(name, cancel_rate), y = cancel_rate)) +
+  geom_col(fill = "orange") +
+  coord_flip() +
+  labs(
+    title = "Cancelation Rate by Airline",
+    x = "Airline",
+    y = "Cancelation Rate"
+  )
+```
+As we can see from above, Skywest Airlines Inc has the highest cancellation rate, with Mesa Airlines very closely behind, and a huge drop off at Endeavor Air Inc.
 ## Planes Dataset EDA
 
 ```{r}
