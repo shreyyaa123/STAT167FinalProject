@@ -262,7 +262,7 @@ not_canceled|>
   ggplot(aes(x=month, y=mean_dep_delay))+
   geom_line()+
   geom_point()+
-  labs(title = "Monthly Departure Delays", x="Month", y="Minutes")
+  labs(title = "Monthly Departure Delays", x="Month", y="Time (minutes)")
 
 ```
 #we see that the majority of flights are delayed from May to mid July, and there is another peak at December. The months with the shorest delays are September and October.
@@ -297,7 +297,7 @@ carrier_Dest<-not_canceled |>
   ggplot(carrier_Dest, aes(x = reorder(carrier, avg_arr_Delay, median), y= avg_arr_Delay))+
   geom_boxplot()+
   coord_flip()+
-  labs(title = "Average Arrival Delay by Carrier",x = "Carrier", y= "Average Arrival Delay")+
+  labs(title = "Average Arrival Delay by Carrier",x = "Carrier", y= "Average Arrival Delay (minutes)")+
   theme_minimal()
 ```
 
