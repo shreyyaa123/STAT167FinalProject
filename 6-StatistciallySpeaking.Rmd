@@ -2,7 +2,7 @@
 title: "Final Project Proposal STAT167"
 author: 
   - "Group Name: Statistically Speaking"
-  - "Shreya Mohan, Kalyani Mantirraju, Crystal Arevalo, Karen Alvarez, Mason Lam"
+  - "Shreya Mohan, Kalyani Mantirraju, Crystal Arevalo, Karen Alvarez, Mason Lam, Eric Yang"
 date: "04/27/2025"
 format:
   html:
@@ -452,6 +452,97 @@ carrier_Dest<-not_canceled |>
 **Assumptions:** All variables are independent
 
 The process of analysis will involve data cleaning after forming our question, basic exploration of the data, comparison of certain datasets with other datasets, visualization of the data, and an interpretation of the data/results. Cleaning of the data will deal with tasks like handling empty cells/columns and NA values. When it comes to exploratory data analysis, we plan on using tools such as histograms and boxplots to gain an understanding of the data and identify patterns and relationships. The statistical analysis that we plan on performing with the data will most likely involve making comparisons between groups to compare airlines, times, and other metrics to make our overall claim. For example, we might be comparing trends in time performance by weeks or month between different airlines to gain a better understanding of how differences in airlines affect delays. In terms of data visualization, we will most likely be using line graphs for trends over time when it comes to comparing flight time under different variables and heatmaps/scatterplots for flight delays to help communicate our findings. Finally, interpretation of the data will involve us answering the proposed question by summarizing our statistics/findings as well as through the presentation of graphical evidence.
+
+# Analysis:
+
+### Question 4: Does the age of the plane affect flight delays?
+
+### Within this main question we will perform hypothesis tests to answer the two following sub-questions:
+
+1.  Do older planes experience more delays compared to newer ones? 
+
+```{r}
+# Join flights with planes to get plane manufacture year
+planes_fixed <- planes %>%
+  rename(plane_year = year)
+
+flights_planes <- flights %>%
+  inner_join(planes %>% rename(plane_year = year), by = "tailnum") %>%
+  filter(!is.na(plane_year), !is.na(arr_delay)) %>%
+  mutate(
+    plane_age = 2013 - plane_year,
+    age_group = case_when(
+      plane_age < 10 ~ "0-9 yrs",
+      plane_age < 20 ~ "10-19 yrs",
+      plane_age < 30 ~ "20-29 yrs",
+      TRUE ~ "30+ yrs"
+    )
+  )
+
+head(flights_planes)
+```
+
+```{r}
+flights_planes %>%
+  group_by(age_group) %>%
+  summarise(
+    mean_delay = mean(arr_delay, na.rm = TRUE),
+    count = n()
+  )
+
+anova_age <- aov(arr_delay ~ age_group, data = flights_planes)
+summary(anova_age)
+TukeyHSD(anova_age)
+
+```
+
+2.  Are there specific plane models or manufactures associated with better on-time performance? 
+
+```{r}
+delay_by_manufacturer <- flights_planes %>%
+  group_by(manufacturer) %>%
+  summarise(
+    mean_delay = mean(arr_delay, na.rm = TRUE),
+    count = n()
+  ) %>%
+  filter(count > 50) %>%  # Filter to manufacturers with enough data for reliable stats
+  arrange(mean_delay)
+
+print(delay_by_manufacturer)
+
+```
+
+```{r}
+# Run ANOVA on filtered data
+anova_manufacturer <- aov(arr_delay ~ manufacturer, data = flights_planes %>% filter(manufacturer %in% delay_by_manufacturer$manufacturer))
+
+# Summary of ANOVA
+summary(anova_manufacturer)
+
+# Run TukeyHSD on the ANOVA model
+tukey_manufacturer <- TukeyHSD(anova_manufacturer)
+
+# Convert TukeyHSD result for 'manufacturer' to a data.frame for easier filtering
+res_df <- as.data.frame(tukey_manufacturer$manufacturer)
+res_df %>%
+  # Add comparison names as a column (rownames to column)
+  tibble::rownames_to_column(var = "comparison") %>%
+  # Select relevant columns
+  select(comparison, diff, lwr) %>%
+  # Show top 5 rows
+  head(5) %>%
+  print()
+# Show only significant comparisons (adjusted p-value < 0.05)
+signif_res <- res_df[res_df$`p adj` < 0.05, ]
+print(signif_res)
+
+# Sort by absolute difference
+res_df_sorted <- res_df[order(-abs(res_df$diff)), ]
+
+# Show top 10 largest differences
+head(res_df_sorted, 10)
+
+```
 
 # Alternative Strategies & Back Up Plan:
 
