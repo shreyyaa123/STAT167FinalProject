@@ -1,9 +1,10 @@
 ---
 title: "Final Project Proposal STAT167"
-author: 
-  - "Group Name: Statistically Speaking"
-  - "Shreya Mohan, Kalyani Mantirraju, Crystal Arevalo, Karen Alvarez, Mason Lam, Eric Yang"
-date: "04/27/2025"
+author:
+  - name: "Group Name: Statistically Speaking"
+  - name: "Shreya Mohan, Kalyani Mantirraju, Crystal Arevalo,"
+  - name: "Karen Alvarez, Mason Lam, Eric Yang"
+date: "2025-04-27"
 format:
   html:
     toc: true
@@ -20,6 +21,8 @@ format:
 ```{r}
 library(nycflights13)
 library(tidyverse)
+library(car)
+library(dunn.test)
 ```
 
 # Introduction
@@ -457,7 +460,7 @@ The process of analysis will involve data cleaning after forming our question, b
 
 ### Question 4: Does the age of the plane affect flight delays?
 
-### Within this main question we will perform hypothesis tests to answer the two following sub-questions:
+-   Within this main question we will perform hypothesis tests to answer the two following sub-questions:
 
 1.  Do older planes experience more delays compared to newer ones? 
 
@@ -483,66 +486,128 @@ head(flights_planes)
 ```
 
 ```{r}
-flights_planes %>%
+ggplot(flights_planes, aes(x = age_group, y = arr_delay)) +
+  geom_boxplot(fill = "skyblue") +
+  labs(
+    title = "Arrival Delay by Plane Age Group",
+    x = "Plane Age Group",
+    y = "Arrival Delay (minutes)"
+  )
+```
+
+```{r}
+#install.packages("dunn.test")
+
+# Ensure age_group is factor
+flights_planes$age_group <- as.factor(flights_planes$age_group)
+
+# Summary stats
+summary_stats <- flights_planes %>%
   group_by(age_group) %>%
   summarise(
     mean_delay = mean(arr_delay, na.rm = TRUE),
     count = n()
   )
+print(summary_stats)
 
-anova_age <- aov(arr_delay ~ age_group, data = flights_planes)
-summary(anova_age)
-TukeyHSD(anova_age)
+# Normality test with sample per group
+set.seed(123)
+normality_test <- flights_planes %>%
+  group_by(age_group) %>%
+  summarise(
+    sample_delays = list(sample(arr_delay[!is.na(arr_delay)], min(5000, n()), replace = FALSE)),
+    shapiro_p = shapiro.test(unlist(sample_delays))$p.value
+  ) %>%
+  select(-sample_delays)
+print(normality_test)
+
+# Levene's Test for homogeneity of variances
+levene_result <- leveneTest(arr_delay ~ age_group, data = flights_planes)
+print(levene_result)
+
+# Since homogeneity is violated, run Kruskal-Wallis test (non-parametric)
+kruskal_result <- kruskal.test(arr_delay ~ age_group, data = flights_planes)
+print(kruskal_result)
+
+# post-hoc test for Kruskal-Wallis (Dunn test) if significant
+dunn.test(flights_planes$arr_delay, flights_planes$age_group, method = "bonferroni")
 
 ```
+
+The Kruskal-Wallis test revealed a highly significant difference in arrival delays across plane age groups (p \< 2.2e-16), indicating that at least one group’s delay distribution differs from the others. Post-hoc pairwise comparisons using Dunn’s test with Bonferroni correction showed that planes aged 20–29 years experience significantly different delay patterns compared to both the 0–9 and 10–19 year groups (adjusted p-values \< 0.001). Additionally, planes aged 30+ years differ significantly from the 20–29 year group (adjusted p = 0.0002), but do not differ significantly from the younger 0–9 or 10–19 year groups. The difference between the 10–19 and 0–9 year groups was borderline significant (adjusted p = 0.0495). In summary, planes aged 20–29 years tend to have notably different arrival delays compared to most other age groups, highlighting a possible link between this age range and on-time performance issues.
 
 2.  Are there specific plane models or manufactures associated with better on-time performance? 
 
 ```{r}
-delay_by_manufacturer <- flights_planes %>%
-  group_by(manufacturer) %>%
-  summarise(
-    mean_delay = mean(arr_delay, na.rm = TRUE),
-    count = n()
-  ) %>%
-  filter(count > 50) %>%  # Filter to manufacturers with enough data for reliable stats
-  arrange(mean_delay)
 
-print(delay_by_manufacturer)
+flights_manufacturer <- flights %>%
+  inner_join(planes, by = "tailnum") %>%
+  filter(!is.na(manufacturer), !is.na(arr_delay)) %>%
+  group_by(manufacturer) %>%
+  filter(n() > 50)
 
 ```
 
 ```{r}
-# Run ANOVA on filtered data
-anova_manufacturer <- aov(arr_delay ~ manufacturer, data = flights_planes %>% filter(manufacturer %in% delay_by_manufacturer$manufacturer))
-
-# Summary of ANOVA
-summary(anova_manufacturer)
-
-# Run TukeyHSD on the ANOVA model
-tukey_manufacturer <- TukeyHSD(anova_manufacturer)
-
-# Convert TukeyHSD result for 'manufacturer' to a data.frame for easier filtering
-res_df <- as.data.frame(tukey_manufacturer$manufacturer)
-res_df %>%
-  # Add comparison names as a column (rownames to column)
-  tibble::rownames_to_column(var = "comparison") %>%
-  # Select relevant columns
-  select(comparison, diff, lwr) %>%
-  # Show top 5 rows
-  head(5) %>%
-  print()
-# Show only significant comparisons (adjusted p-value < 0.05)
-signif_res <- res_df[res_df$`p adj` < 0.05, ]
-print(signif_res)
-
-# Sort by absolute difference
-res_df_sorted <- res_df[order(-abs(res_df$diff)), ]
-
-# Show top 10 largest differences
-head(res_df_sorted, 10)
-
+ggplot(flights_manufacturer, aes(x = reorder(manufacturer, arr_delay, FUN = median), y = arr_delay, fill = manufacturer)) +
+  geom_boxplot(outlier.size = 0.5, alpha = 0.7) +
+  coord_flip() +   # horizontal for readability
+  labs(
+    title = "Arrival Delay Distribution by Plane Manufacturer",
+    x = "Manufacturer",
+    y = "Arrival Delay (minutes)"
+  )
 ```
+
+```{r}
+# filter manufacturers with more than 50 flights
+flights_manufacturer <- flights %>%
+  inner_join(planes, by = "tailnum") %>%
+  filter(!is.na(manufacturer), !is.na(arr_delay)) %>%
+  group_by(manufacturer) %>%
+  filter(n() > 50) %>%
+  ungroup()
+
+# Convert manufacturer to factor to avoid warnings in tests
+flights_manufacturer$manufacturer <- as.factor(flights_manufacturer$manufacturer)
+
+# Normality test per manufacturer group
+set.seed(123)
+normality_test <- flights_manufacturer %>%
+  group_by(manufacturer) %>%
+  summarise(
+    sample_delays = list(sample(arr_delay, min(5000, n()), replace = FALSE)),
+    shapiro_p = shapiro.test(unlist(sample_delays))$p.value
+  ) %>%
+  select(-sample_delays)
+print(normality_test)
+
+# Levene's Test for homogeneity of variance
+leveneTest(arr_delay ~ manufacturer, data = flights_manufacturer)
+
+# Kruskal-Wallis test 
+kruskal_result <- kruskal.test(arr_delay ~ manufacturer, data = flights_manufacturer)
+cat("\nKruskal-Wallis test result:\n")
+print(kruskal_result)
+
+# If Kruskal-Wallis is significant, do Dunn's test for pairwise comparisons
+dunn_result <- dunn.test(flights_manufacturer$arr_delay, flights_manufacturer$manufacturer, method = "bonferroni")
+  
+#Instead of printing all pairwise comparisons (which is long), filter and print only significant comparisons:
+if (kruskal_result$p.value < 0.05) {
+  sig_comparisons <- data.frame(
+    comparison = dunn_result$comparisons,
+    p_value = dunn_result$P.adjusted
+  ) %>% filter(p_value < 0.05)
+  
+  cat("\nSignificant pairwise differences between manufacturers (Dunn's test):\n")
+  print(sig_comparisons)
+} else {
+  cat("\nNo significant differences between manufacturers detected by Kruskal-Wallis test.\n")
+}
+```
+
+The Kruskal-Wallis test indicates a highly significant difference in arrival delays across plane manufacturers (χ² = 3770.9, df = 21, p \< 2.2e-16). This strongly suggests that not all manufacturers have the same on-time performance. The post-hoc Dunn's test with Bonferroni correction highlights specific pairwise differences. Notably, Airbus aircraft exhibit significantly lower arrival delays compared to Boeing, Bombardier, and Canadair. Additionally, some other manufacturers like Barker Jack L also show significant differences with Boeing and Bombardier.These results indicate that certain manufacturers are associated with better punctuality.
 
 # Alternative Strategies & Back Up Plan:
 
