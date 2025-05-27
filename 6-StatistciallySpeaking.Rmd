@@ -1,18 +1,19 @@
 ---
-title: "Final Project Proposal STAT167"
+title: "Final Project STAT167"
 author:
-  - "Group Name: Statistically Speaking"
-  - "Shreya Mohan, Kalyani Mantirraju, Crystal Arevalo,"
-  - "Karen Alvarez, Mason Lam, Eric Yang"
+  - "Group: Statistically Speaking"
+  - "Shreya Mohan, Kalyani Mantirraju, Crystal Arevalo, Karen Alvarez, Mason Lam, Eric Yang"
 date: "06/02/2025"
-format:
-  pdf:
-    fontsize: 10pt
+output:
+  pdf_document:
+    latex_engine: xelatex
+editor_options:
+  chunk_output_type: inline
 ---
 
 ## Libraries
-```{r, echo=FALSE}
-#install.packages("dunn.test")
+```{r, results = 'hide', message=FALSE}
+# install.packages("dunn.test")
 library(nycflights13)
 library(tidyverse)
 library(car)
