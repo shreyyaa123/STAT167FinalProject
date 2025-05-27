@@ -1,10 +1,9 @@
 ---
 title: "Final Project Proposal STAT167"
-author:
-  - name: "Group Name: Statistically Speaking"
-  - name: "Shreya Mohan, Kalyani Mantirraju, Crystal Arevalo,"
-  - name: "Karen Alvarez, Mason Lam, Eric Yang"
-date: "2025-04-27"
+author: 
+  - "Group Name: Statistically Speaking"
+  - "Shreya Mohan, Kalyani Mantirraju, Crystal Arevalo, Karen Alvarez, Mason Lam"
+date: "04/27/2025"
 format:
   html:
     toc: true
@@ -16,13 +15,13 @@ format:
     fontsize: 10pt
 ---
 
-# Installation & Packages
-
-```{r}
+```{r, echo=FALSE}
+#install.packages("dunn.test")
 library(nycflights13)
 library(tidyverse)
 library(car)
 library(dunn.test)
+library(gridExtra)
 ```
 
 # Introduction
@@ -60,14 +59,6 @@ The following questions will guide the analysis:
 
 ## 1. Flights dataset: All flights that departed from NYC in 2013
 
-```{r}
-head(flights)
-dim(flights)
-names(flights)
-str(flights)
-glimpse(flights)
-```
-
 ### Variables:
 
 -   flights ( year, month, day, dep_time, arr_time, sched_dep_time, sched_arr_time, dep_delay, arr_delay, carrier, origin, dest, air_time, distance, time_hour )
@@ -83,14 +74,6 @@ glimpse(flights)
 
 ## 2. Airlines dataset: Translation between two letter carrier codes and names
 
-```{r}
-head(airlines)
-dim(airlines)
-names(airlines)
-str(airlines)
-glimpse(airlines)
-```
-
 ### Variables:
 
 -   airlines ( carrier, name )
@@ -101,7 +84,6 @@ glimpse(airlines)
 
 ```{r}
 head(airports)
-dim(airports)
 names(airports)
 str(airports)
 glimpse(airports)
@@ -116,14 +98,6 @@ glimpse(airports)
 
 ## 4. Planes dataset: Construction information about each plane
 
-```{r}
-head(planes)
-dim(planes)
-names(planes)
-str(planes)
-glimpse(planes)
-```
-
 ### Variables:
 
 -   planes ( year, type, manufacturer, model, engines, seats, speed, engine )
@@ -135,14 +109,6 @@ glimpse(planes)
     -   engine : type in engine
 
 ## 5. Weather dataset: Hourly meterological data for each airport
-
-```{r}
-head(weather)
-dim(weather)
-names(weather)
-str(weather)
-glimpse(weather)
-```
 
 ### Variables:
 
@@ -157,37 +123,26 @@ glimpse(weather)
     -   visib : visibility in miles
     -   time_hour : date and hour of the recording as POSIXct date
 
-We can join the data tables by combining them through similar attributes, such as combining flights : time_hour with weather : time_hour.
-
-## EDA:
-
-## Summary Statistics & Check for Missing Values:
-
-```{r}
-summary(flights)
-colSums(is.na(flights))
-
-summary(airlines)
-colSums(is.na(airlines))
-
-summary(airports)
-colSums(is.na(airports))
-
-summary(planes)
-colSums(is.na(planes))
-
-summary(weather)
-colSums(is.na(weather))
-```
+\newpage
+# EDA:
 
 ## Planes Dataset EDA
 
-```{r}
-dim(planes)
-colnames(planes)
+```{r, echo=FALSE}
+cat("\nMissing values per column:\n")
+print(colSums(is.na(planes)))
+
+cat("\nColumn types and structure:\n")
+print(glimpse(planes))
+
+cat("\nFirst few rows:\n")
+print(head(planes))
+
+cat("\nSummary statistics:\n")
+print(summary(planes))
 ```
 
-```{r}
+```{r, echo=FALSE}
 planes %>%
   count(manufacturer, sort = TRUE) %>%
   top_n(10) %>%
@@ -199,7 +154,7 @@ planes %>%
 
 The visualization above shows the top 10 plane manufacturers present in the data-set. Boeing has the largest amount of planes with approximately 1750 planes, and Airbus has the second most with approximately 400 planes.
 
-```{r}
+```{r, echo=FALSE}
 ggplot(planes, aes(x = year)) +
   geom_histogram(binwidth = 1, fill = "midnightblue", color = "white") +
   labs(title = "Distribution of Plane Manufacture Years", x = "Year", y = "Count")
@@ -207,24 +162,22 @@ ggplot(planes, aes(x = year)) +
 
 This histogram shows the distribution of plane manufacture years, with the majority of planes built between the mid-1990s and early 2000s. There is a notable peak around the year 2000, indicating a surge in plane production during that period.
 
-```{r}
-avg_engines <- planes %>%
-  group_by(engines) %>%
-  summarise(avg = mean(engines, na.rm = TRUE))
-
-# Create the bar plot
-ggplot(avg_engines, aes(x = factor(engines), y = avg)) +
-  geom_bar(stat = "identity", fill = "steelblue") +
-  labs(title = "Average Number of Engines per Plane", x = "Number of Engines", y = "Average")
-```
-
 ## Airlines Dataset EDA
 
 Dimensions and column names of the airlines dataset
 
-```{r}
-dim(airlines)
-colnames(airlines)
+```{r, echo=FALSE}
+cat("\nMissing values per column:\n")
+print(colSums(is.na(airlines)))
+
+cat("\nColumn types and structure:\n")
+print(glimpse(airlines))
+
+cat("\nFirst few rows:\n")
+print(head(airlines))
+
+cat("\nSummary statistics:\n")
+print(summary(airlines))
 ```
 
 Viewing all the Unique Airlines:
@@ -279,46 +232,20 @@ ggplot(cancel_rate, aes(x = reorder(name, cancel_rate), y = cancel_rate)) +
 
 As we can see from above, Skywest Airlines Inc has the highest cancellation rate, with Mesa Airlines very closely behind, and a huge drop off at Endeavor Air Inc. \## Planes Dataset EDA
 
-```{r}
-dim(planes)
-colnames(planes)
-```
+## Flights Dataset EDA:
 
-```{r}
-planes %>%
-  count(manufacturer, sort = TRUE) %>%
-  top_n(10) %>%
-  ggplot(aes(x = reorder(manufacturer, n), y = n)) +
-  geom_col(fill = "darkgreen") +
-  coord_flip() +
-  labs(title = "Top 10 Plane Manufacturers", x = "Manufacturer", y = "Number of Planes")
-```
+```{r, echo=FALSE}
+cat("\nMissing values per column:\n")
+print(colSums(is.na(flights)))
 
-The visualization above shows the top 10 plane manufacturers present in the data-set. Boeing has the largest amount of planes with approximately 1750 planes, and Airbus has the second most with approximately 400 planes.
+cat("\nColumn types and structure:\n")
+print(glimpse(flights))
 
-```{r}
-ggplot(planes, aes(x = year)) +
-  geom_histogram(binwidth = 1, fill = "midnightblue", color = "white") +
-  labs(title = "Distribution of Plane Manufacture Years", x = "Year", y = "Count")
-```
+cat("\nFirst few rows:\n")
+print(head(flights))
 
-This histogram shows the distribution of plane manufacture years, with the majority of planes built between the mid-1990s and early 2000s. There is a notable peak around the year 2000, indicating a surge in plane production during that period.
-
-```{r}
-avg_engines <- planes %>%
-  group_by(engines) %>%
-  summarise(avg = mean(engines, na.rm = TRUE))
-
-# Create the bar plot
-ggplot(avg_engines, aes(x = factor(engines), y = avg)) +
-  geom_bar(stat = "identity", fill = "steelblue") +
-  labs(title = "Average Number of Engines per Plane", x = "Number of Engines", y = "Average")
-```
-
-## FLIGHTS EDA:
-
-```{r}
-head(flights)
+cat("\nSummary statistics:\n")
+print(summary(flights))
 ```
 
 ## Most of our analysis is based on how other variables and datasets affect and compare to the flights dataset. We are seeing how the arrival time, departure delay time, departure time, arrival delay time, and other variables are affected.
@@ -450,6 +377,121 @@ carrier_Dest<-not_canceled |>
   theme_minimal()
 ```
 
+## Weather Dataset EDA
+
+```{r, echo=FALSE}
+cat("\nMissing values per column:\n")
+print(colSums(is.na(weather)))
+
+cat("\nColumn types and structure:\n")
+print(glimpse(weather))
+
+cat("\nFirst few rows:\n")
+print(head(weather))
+
+cat("\nSummary statistics:\n")
+print(summary(weather))
+```
+
+```{r}
+# Related Questions from our Proposal:
+# --- How do weather conditions affect flight delays? 
+# --- How do environmental factors like humidity, visibility, and wind affect flight delays? 
+# --- What impact does precipitation have on specific airports and weather-related delays? 
+
+
+# Average Temperature by Month
+# --- We can see that the average temperature ranges from about 70-80º in the summer, and 35-40º in the winter. 
+# --- When answering our research questions, we can see if there is a correlation between summer/winter weather and flight delays.
+
+monthlyavgtemp <- weather %>%
+  group_by(month) %>%
+  summarise(monthlyavgtemp = mean(temp, na.rm = TRUE))
+
+ggplot(data = monthlyavgtemp,
+       aes(x = factor(month), y = monthlyavgtemp)) +
+  geom_col(color = "skyblue", fill = "lightskyblue1") + 
+  labs(title = "Average Temperature by Month",
+       x = "Month",
+       y = "Average Temperature (Fº)") +
+  theme_minimal()
+  
+
+# Average Visibility by Month
+# --- The average visibility does not greatly vary by month looking at the average value. However, we can see that there is slightly less visiblity in winter months.
+# --- Looking at the boxplots, we can see that there are a lot of outliers. Removing these outliers and focusing on visib < 10 shows us a better distribution of visiblity.
+# --- When answering our research questions, we can compare the average visibility during flight delays vs average visibility without flight       delays to further explore the role of visibility in flight delays. 
+
+monthlyavgvisib <- weather %>%
+  group_by(month) %>%
+  summarise(monthlyavgvisib = mean(visib, na.rm = TRUE))
+
+ggplot(data = monthlyavgvisib) +
+    geom_col(aes(x = factor(month), y = monthlyavgvisib),
+                   color = "orchid4", fill = "plum") + 
+  labs(title = "Average Visibility by Month",
+       x = "Month",
+       y = "Average Visibility") +
+  theme_minimal()
+
+ggplot(weather, aes(x = factor(month), y = visib)) +
+  geom_boxplot(fill = "plum", color = "orchid4") +
+  labs(title = "Distribution of Visibility by Month",
+       x = "Month",
+       y = "Visibility") +
+  coord_flip() +
+  theme_minimal()
+
+ggplot(filter(weather, visib < 10), aes(x = factor(month), y = visib)) +
+  geom_boxplot(fill = "plum", color = "orchid4") +
+  labs(title = "Distribution of Visibility < 10 by Month",
+       x = "Month",
+       y = "Visibility") +
+  coord_flip() +
+  theme_minimal()
+
+
+# Distribution of Humidity by Month
+# --- The distribution of humidity varies by month, but there does not seem to be significant differences.
+# --- We can further explore the role of humidity by comparing it to other weather variables and flight delays.
+
+ggplot(weather, aes(x = factor(month), y = humid)) +
+  geom_boxplot(fill = "darkseagreen2", color = "darkgreen") +
+  labs(title = "Distribution of Humidity by Month (With Outliers)",
+       x = "Month",
+       y = "Humidity") +
+  coord_flip() +
+  theme_minimal()
+
+
+# Precipitation by Month
+# --- The average precipitation for each month varies greatly. We can see that spring months have the greatest average precipitation.
+# --- When answering our research question, we can see if greater precipitation correlates to flight delays. 
+
+monthlyprecip <- weather %>%
+  group_by(month) %>%
+  summarise(avgmonthlyprecip = mean(precip, na.rm = TRUE))
+
+ggplot(monthlyprecip, aes(x = month, y = avgmonthlyprecip)) +
+  geom_line(color = "palevioletred2") +
+  geom_point(color = "palevioletred4") +
+  labs(title = "Average Monthly Precipitation",
+       x = "Month",
+       y = "Average Precipitation") +
+  scale_x_continuous(breaks = 1:12) +
+  theme_minimal()
+
+
+# Correlation Between Variables
+# --- We can explore the correlation between different weather variables and see how they may work together to impact flight delays.
+
+cor(weather$precip, weather$visib, use = "complete.obs")
+cor(weather$humid, weather$visib, use = "complete.obs")
+
+
+```
+
+\newpage
 # Analysis Approach Plan:
 
 **Assumptions:** All variables are independent
@@ -460,9 +502,13 @@ The process of analysis will involve data cleaning after forming our question, b
 
 ### Question 4: Does the age of the plane affect flight delays?
 
--   Within this main question we will perform hypothesis tests to answer the two following sub-questions:
+Within this main question we will perform hypothesis tests to answer the two following sub-questions:
 
 1.  Do older planes experience more delays compared to newer ones? 
+
+Null Hypothesis ($H_0$): There is no difference in the distribution of arrival delays across the different plane age groups.
+
+Alternative Hypothesis ($H_1$): At least one plane age group has a different distribution of arrival delays compared to the others.
 
 ```{r}
 # Join flights with planes to get plane manufacture year
@@ -485,7 +531,7 @@ flights_planes <- flights %>%
 head(flights_planes)
 ```
 
-```{r}
+```{r, echo=FALSE}
 ggplot(flights_planes, aes(x = age_group, y = arr_delay)) +
   geom_boxplot(fill = "skyblue") +
   labs(
@@ -494,14 +540,11 @@ ggplot(flights_planes, aes(x = age_group, y = arr_delay)) +
     y = "Arrival Delay (minutes)"
   )
 ```
+The boxplot shows that arrival delays are fairly similar across all plane age groups, with comparable medians and interquartile ranges. While each group has extreme outliers, there is no clear visual trend suggesting that older planes experience more delays than newer ones. We will run a hypothesis test to further our findings. 
 
 ```{r}
-#install.packages("dunn.test")
-
-# Ensure age_group is factor
 flights_planes$age_group <- as.factor(flights_planes$age_group)
 
-# Summary stats
 summary_stats <- flights_planes %>%
   group_by(age_group) %>%
   summarise(
@@ -522,12 +565,10 @@ normality_test <- flights_planes %>%
 print(normality_test)
 
 # Levene's Test for homogeneity of variances
-levene_result <- leveneTest(arr_delay ~ age_group, data = flights_planes)
-print(levene_result)
+leveneTest(arr_delay ~ age_group, data = flights_planes)
 
 # Since homogeneity is violated, run Kruskal-Wallis test (non-parametric)
-kruskal_result <- kruskal.test(arr_delay ~ age_group, data = flights_planes)
-print(kruskal_result)
+kruskal.test(arr_delay ~ age_group, data = flights_planes)
 
 # post-hoc test for Kruskal-Wallis (Dunn test) if significant
 dunn.test(flights_planes$arr_delay, flights_planes$age_group, method = "bonferroni")
@@ -538,17 +579,19 @@ The Kruskal-Wallis test revealed a highly significant difference in arrival dela
 
 2.  Are there specific plane models or manufactures associated with better on-time performance? 
 
-```{r}
+Null Hypothesis ($H_0$): There is no difference in the distribution of arrival delays across different plane models or manufacturers.
 
+Alternate Hypothesis ($H_1$): At least one plane model or manufacturer has a different distribution of arrival delays compared to the others.
+
+```{r}
 flights_manufacturer <- flights %>%
   inner_join(planes, by = "tailnum") %>%
   filter(!is.na(manufacturer), !is.na(arr_delay)) %>%
   group_by(manufacturer) %>%
   filter(n() > 50)
-
 ```
 
-```{r}
+```{r, echo=FALSE}
 ggplot(flights_manufacturer, aes(x = reorder(manufacturer, arr_delay, FUN = median), y = arr_delay, fill = manufacturer)) +
   geom_boxplot(outlier.size = 0.5, alpha = 0.7) +
   coord_flip() +   # horizontal for readability
@@ -568,7 +611,6 @@ flights_manufacturer <- flights %>%
   filter(n() > 50) %>%
   ungroup()
 
-# Convert manufacturer to factor to avoid warnings in tests
 flights_manufacturer$manufacturer <- as.factor(flights_manufacturer$manufacturer)
 
 # Normality test per manufacturer group
@@ -587,27 +629,37 @@ leveneTest(arr_delay ~ manufacturer, data = flights_manufacturer)
 
 # Kruskal-Wallis test 
 kruskal_result <- kruskal.test(arr_delay ~ manufacturer, data = flights_manufacturer)
-cat("\nKruskal-Wallis test result:\n")
 print(kruskal_result)
 
-# If Kruskal-Wallis is significant, do Dunn's test for pairwise comparisons
-dunn_result <- dunn.test(flights_manufacturer$arr_delay, flights_manufacturer$manufacturer, method = "bonferroni")
-  
-#Instead of printing all pairwise comparisons (which is long), filter and print only significant comparisons:
 if (kruskal_result$p.value < 0.05) {
+  dunn_result <- dunn.test(flights_manufacturer$arr_delay, flights_manufacturer$manufacturer, method = "bonferroni")
+  
   sig_comparisons <- data.frame(
     comparison = dunn_result$comparisons,
     p_value = dunn_result$P.adjusted
-  ) %>% filter(p_value < 0.05)
+  ) %>% 
+    filter(p_value < 0.05) %>%
+    arrange(p_value) %>%
+    slice_head(n = 5) %>%  # Show only top 5
+    mutate(p_value = signif(p_value, 4))  # Optional: round p-values
   
-  cat("\nSignificant pairwise differences between manufacturers (Dunn's test):\n")
-  print(sig_comparisons)
+  cat("Kruskal-Wallis p-value:", signif(kruskal_result$p.value, 4), "\n")
+  cat("Significant differences found. Top 5 manufacturer pairs with different arrival delays:\n\n")
+  print(sig_comparisons, row.names = FALSE)
+  
 } else {
-  cat("\nNo significant differences between manufacturers detected by Kruskal-Wallis test.\n")
+  cat("Kruskal-Wallis p-value:", signif(kruskal_result$p.value, 4), "\n")
+  cat("No significant differences found among manufacturers.\n")
 }
 ```
 
-The Kruskal-Wallis test indicates a highly significant difference in arrival delays across plane manufacturers (χ² = 3770.9, df = 21, p \< 2.2e-16). This strongly suggests that not all manufacturers have the same on-time performance. The post-hoc Dunn's test with Bonferroni correction highlights specific pairwise differences. Notably, Airbus aircraft exhibit significantly lower arrival delays compared to Boeing, Bombardier, and Canadair. Additionally, some other manufacturers like Barker Jack L also show significant differences with Boeing and Bombardier.These results indicate that certain manufacturers are associated with better punctuality.
+The Kruskal-Wallis test indicates a highly significant difference in arrival delays across plane manufacturers (χ² = 3770.9, df = 21, p < 2.2e-16). This strongly suggests that not all manufacturers have the same on-time performance. The post-hoc Dunn's test with Bonferroni correction highlights specific pairwise differences. Notably, comparisons involving Embraer show consistently significant differences with Airbus Industrie, Boeing, Bombardier Inc, and McDonnell Douglas, indicating that Embraer aircraft tend to have distinct arrival delay patterns compared to these manufacturers. Additionally, Airbus and McDonnell Douglas pairs also appear among the most significant differences. These results indicate that certain manufacturers, especially Embraer, are associated with notably different arrival delay profiles, reflecting differences in punctuality or operational factors across manufacturers.
+
+\newpage
+
+# Conclusion
+
+# Member Contributions
 
 # Alternative Strategies & Back Up Plan:
 
