@@ -377,6 +377,7 @@ carrier_Dest<-not_canceled |>
   theme_minimal()
 ```
 
+<<<<<<< HEAD
 ## Weather Dataset EDA
 
 ```{r, echo=FALSE}
@@ -394,6 +395,15 @@ print(summary(weather))
 ```
 
 ```{r}
+=======
+
+# EDA for Weather Data
+
+```{r}
+
+head(weather)
+
+>>>>>>> origin/main
 # Related Questions from our Proposal:
 # --- How do weather conditions affect flight delays? 
 # --- How do environmental factors like humidity, visibility, and wind affect flight delays? 
@@ -491,7 +501,12 @@ cor(weather$humid, weather$visib, use = "complete.obs")
 
 ```
 
+<<<<<<< HEAD
 \newpage
+=======
+
+
+>>>>>>> origin/main
 # Analysis Approach Plan:
 
 **Assumptions:** All variables are independent
