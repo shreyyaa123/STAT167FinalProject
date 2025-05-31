@@ -13,12 +13,27 @@ editor_options:
 
 ## Libraries
 ```{r, results = 'hide', message=FALSE}
-# install.packages("dunn.test")
+#install.packages("dunn.test")
+#install.packages("multcomp")
+# install.packages("nortest")
+# install.packages("rstatix")
+# install.packages("mgcv")
+library(mgcv)
+library(rstatix)
 library(nycflights13)
 library(tidyverse)
 library(car)
 library(dunn.test)
 library(gridExtra)
+library(nycflights13)
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(broom)
+library(car) 
+library(multcomp)
+library(nortest)
+library(rstatix)
 ```
 
 # Project Description:
@@ -485,6 +500,218 @@ cor(weather$humid, weather$visib, use = "complete.obs")
 The process of analysis will involve data cleaning after forming our question, basic exploration of the data, comparison of certain datasets with other datasets, visualization of the data, and an interpretation of the data/results. Cleaning of the data will deal with tasks like handling empty cells/columns and NA values. When it comes to exploratory data analysis, we plan on using tools such as histograms and boxplots to gain an understanding of the data and identify patterns and relationships. The statistical analysis that we plan on performing with the data will most likely involve making comparisons between groups to compare airlines, times, and other metrics to make our overall claim. For example, we might be comparing trends in time performance by weeks or month between different airlines to gain a better understanding of how differences in airlines affect delays. In terms of data visualization, we will most likely be using line graphs for trends over time when it comes to comparing flight time under different variables and heatmaps/scatterplots for flight delays to help communicate our findings. Finally, interpretation of the data will involve us answering the proposed question by summarizing our statistics/findings as well as through the presentation of graphical evidence.
 
 # Analysis:
+
+
+### Question 2: How do differences between airlines influence flight delays?
+
+To answer this question, we can explore factors such as airlines, engines, 
+
+#### 1. Do some airlines have more delays than others?
+
+$H_0$: All airlines have the same average delay.
+$H_A$: All airlines do not have the same average delay. 
+
+We can test this by comparing the means of the different airlines.
+
+```{r}
+
+flights_not_missing = flights %>%
+  filter(!is.na(arr_delay))
+
+flights_not_missing = flights_not_missing %>%
+  left_join(airlines, by = "carrier")
+
+top_airlines = flights_not_missing %>%
+  count(name, sort = TRUE) %>%
+  top_n(5) %>%
+  pull(name)
+
+flights_subset = flights_not_missing %>%
+  filter(name %in% top_airlines)
+
+# Testing assumptions before ANOVA
+print("Levene Test for Equal Variances: ")
+leveneTest(arr_delay ~ name, data = flights_subset)
+
+# Cannot use Shapiro-Wilk to test for normality due to large sample
+# using ad test instead
+ad.test(flights_subset$arr_delay)
+
+length(flights_subset$arr_delay)
+
+```
+
+Before attempting to test our hypotheses with ANOVA, we check on the assumptions of equal variances and normality. Both are violated, but we can bypass the normality violation because of the large sample size. This means we can use a Welch Anova test instead of the regular Anova, which assumes that the variances are not equal.
+
+
+```{r}
+
+# Welch Anova Test
+print("Welch Anova Test")
+oneway.test(arr_delay ~ name, data = flights_subset, var.equal = FALSE)
+
+# Games_howell in place of Tukey
+flights_subset %>%
+  games_howell_test(arr_delay ~ name)
+
+```
+
+The F statistic is extremely high, suggesting there is definitely a difference between means. We can reject our null. Since we are using Welch Anova, we can use the Games-Howell test in place of the Tukey test to observe the differences between each airline.
+
+The results from the Games-Howell test show us that there is a stark difference between the means of each airline (0 does not exist within any confidence interval and the p-values are very low). So to answer our question: yes, some airlines have more delays than others.
+
+
+#### 2: Does arrival delay vary between different engine types? 
+
+$H_0$: Arrival delay does not vary between different engine types.
+$H_A$: Arrival delay does vary between different engine types.
+
+We can use ANOVA to compare different engine types. However, we first need to test the assumptions.
+
+```{r}
+
+flights_engines = flights %>%
+  filter(!is.na(arr_delay)) %>% 
+  left_join(planes, by = "tailnum") %>%
+  filter(!is.na(engine)) 
+
+table(flights_engines$engine)
+
+# Testing assumptions before ANOVA
+print("Levene Test for Equal Variances: ")
+leveneTest(arr_delay ~ engine, data = flights_engines)
+
+# Cannot use Shapiro-Wilk to test for normality due to large sample
+# using ad test instead
+ad.test(flights_engines$arr_delay)
+
+```
+
+By testing the assumptions of equal variances and normality, we can see that both assumptions are violated. However, due to the large sample size, we can bypass the normality assumption. We can therefore use the Welch ANOVA test to account for the unequal variances. 
+
+
+```{r}
+
+oneway.test(arr_delay ~ engine, data = flights_engines, var.equal = FALSE)
+
+flights_engines %>%
+  games_howell_test(arr_delay ~ engine)
+
+```
+
+The results from the Games-Howell test show us that most of the different engine types do not have a different mean arrival delay. However, there is a difference between turbo-fan vs turbo-jet engines. This suggests that for most engine types, arrival delay does not vary significantly between engines. We can check the most common type of engine for each airlines.
+
+```{r}
+
+flights_engines_named = flights_engines %>%
+  left_join(airlines, by = "carrier")
+
+# Find most common engine type per airline
+most_common_engines = flights_engines_named %>%
+  group_by(name, engine) %>%
+  summarise(count = n(), .groups = "drop") %>%
+  arrange(name, desc(count)) %>%
+  group_by(name) %>%
+  slice(1) 
+
+most_common_engines
+
+```
+
+It looks like all the airlines mostly use Turbo-fan engines, which means we don't have much evidence to connect different engine types with the arrival delays of different airlines. We fail to reject the null hypothesis.
+
+
+#### 3: Does cancellation rate vary across airlines?
+
+$H_0$: Cancellation rate is the same across all airlines.
+$H_A$: Cancellation rate differs between at least some airlines.
+
+We can use a chi-squared test to check our hypotheses.
+
+```{r}
+
+flights_cancel = flights %>%
+  mutate(cancelled = is.na(dep_time)) %>%
+  left_join(airlines, by = "carrier")
+
+cancel_table = table(flights_cancel$name, flights_cancel$cancelled)
+cancel_table
+
+chisq_test_result = chisq.test(cancel_table)
+chisq_test_result
+
+```
+
+Since the p-value is low, we can say that there is evidence that cancellation rate does vary across different airlines and we can reject the null hypothesis.
+
+
+#### 4: Does speed vary across airlines?
+
+$H_0$: Mean speed is the same across all airlines.
+$H_A$: At least one airline has a different mean speed from the others.
+
+We can test this using ANOVA, first checking assumptions of normality and equal variances.
+
+```{r}
+
+flights_speed = flights %>%
+  filter(!is.na(air_time), air_time > 0, !is.na(distance)) %>%
+  mutate(speed = distance / (air_time / 60)) %>% 
+  left_join(airlines, by = "carrier")
+
+# Testing equal variances with Levene's
+leveneTest(speed ~ name, data = flights_speed)
+
+# Testing for normality with ad test
+ad.test(flights_speed$speed)
+
+```
+
+Like the previous questions, we can bypass normality and use a Welch ANOVA test for unequal variances.
+
+```{r}
+
+oneway.test(speed ~ name, data = flights_speed)
+
+flights_speed %>%
+  games_howell_test(speed ~ name)
+
+```
+
+The results show us that there is a drastic evidence to show a difference between speed for every airline. All the p-values are below 0.05, so we can reject the null hypothesis and say that speed does vary across different airlines. We can further see how speed interacts with flight delays by testing the correlation.
+
+First, we can see how speed affects delays by each airline.
+
+```{r}
+
+speed_delay_summary = flights_speed %>%
+  filter(!is.na(arr_delay)) %>%
+  group_by(name) %>%
+  summarise(
+    avg_speed = mean(speed, na.rm = TRUE),
+    avg_arr_delay = mean(arr_delay, na.rm = TRUE)
+  )
+
+speed_delay_summary
+
+cor.test(speed_delay_summary$avg_speed, speed_delay_summary$avg_arr_delay)
+
+ggplot(speed_delay_summary, aes(x = avg_speed, y = avg_arr_delay, label = name)) +
+  geom_point() +
+  geom_text(nudge_y = 2, size = 3) +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "Average Speed vs. Arrival Delay by Airline",
+       x = "Average Speed (mph)",
+       y = "Average Arrival Delay (min)")
+
+
+```
+
+This correlation confidence interval does not include 0 but it does come close, and it shows us that the correlation between speed and delay by airline is about -0.529. This suggests that airlines with more speed have less delay. Note that there are some outliers, since we only have a few different airlines to observe.
+
+
+To provide some insight into our overall findings, we found that: (1) Different airlines have different delays on average, (2) Engine type does not seem to vary across airlines, and it doesn't seem to have a significant impact on delays, (3) Average cancellation rates vary between airlines, and (4) Airlines with faster mean speeds tend to experience lower arrival delays on average.
+
 
 ### Question 4: Does the age of the plane affect flight delays?
 
