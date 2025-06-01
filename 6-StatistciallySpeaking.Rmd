@@ -790,6 +790,8 @@ dunn.test(flights_planes$arr_delay, flights_planes$age_group, method = "bonferro
 
 The Kruskal-Wallis test revealed a highly significant difference in arrival delays across plane age groups (p \< 2.2e-16), indicating that at least one group’s delay distribution differs from the others. Post-hoc pairwise comparisons using Dunn’s test with Bonferroni correction showed that planes aged 20–29 years experience significantly different delay patterns compared to both the 0–9 and 10–19 year groups (adjusted p-values \< 0.001). Additionally, planes aged 30+ years differ significantly from the 20–29 year group (adjusted p = 0.0002), but do not differ significantly from the younger 0–9 or 10–19 year groups. The difference between the 10–19 and 0–9 year groups was borderline significant (adjusted p = 0.0495). In summary, planes aged 20–29 years tend to have notably different arrival delays compared to most other age groups, highlighting a possible link between this age range and on-time performance issues.
 
+\newpage
+
 #### 2.  Are there specific plane models or manufactures associated with better on-time performance? 
 
 $H_0$: There is no difference in the distribution of arrival delays across different plane models or manufacturers.
@@ -867,6 +869,98 @@ if (kruskal_result$p.value < 0.05) {
 ```
 
 The Kruskal-Wallis test indicates a highly significant difference in arrival delays across plane manufacturers (χ² = 3770.9, df = 21, p < 2.2e-16). This strongly suggests that not all manufacturers have the same on-time performance. The post-hoc Dunn's test with Bonferroni correction highlights specific pairwise differences. Notably, comparisons involving Embraer show consistently significant differences with Airbus Industrie, Boeing, Bombardier Inc, and McDonnell Douglas, indicating that Embraer aircraft tend to have distinct arrival delay patterns compared to these manufacturers. Additionally, Airbus and McDonnell Douglas pairs also appear among the most significant differences. These results indicate that certain manufacturers, especially Embraer, are associated with notably different arrival delay profiles, reflecting differences in punctuality or operational factors across manufacturers.
+
+\newpage
+
+### Question 3.  Are delays more frequent during major holidays?
+
+$H_0$: There is no difference in the distribution of arrival delays during major holidays compared to other days.
+
+$H_1$: Arrival delays are different during major holidays compared to other days.
+
+```{r}
+#identifying holiday periods
+holidayDates<- as.Date(c(
+  "2013-11-27",  #day before thanksgiving 
+  "2013-11-28",  #thanksgiving 2013
+  "2013-12-24",  #day before christmas
+  "2013-12-25",  #christmas 2013
+  "2014-12-31",  #new years eve
+  "2014-01-01"   #new years 2014
+))
+
+flights_holiday<-flights|>
+  mutate(holiday_flag=ifelse(as.Date(time_hour) %in% holidayDates, "Holiday Period", "Non-Holiday"))|>
+  filter(!is.na(arr_delay))
+
+table(flights_holiday$holiday_flag)
+```
+
+#Departure Delays
+```{r}
+ggplot(flights_holiday, aes(x=holiday_flag, y=dep_delay, fill= holiday_flag))+
+  geom_boxplot(outlier.size = 0.5, alpha=0.7)+
+  labs(title= "Departure Delay Distributions: Holiday Period vs. NonHoliday Flights",
+       x="", y="Departure Delay (minutes)")+
+  theme(legend.position = "none")
+```
+```{r}
+set.seed(707)
+normality_test<-flights_holiday|> #normality test per group
+  group_by(holiday_flag)|>
+  summarise(sample_delays= list(sample(dep_delay, min(5000,n()), replace = FALSE)),
+            shapiro_p = shapiro.test(unlist(sample_delays))$p.value)|>
+  ungroup()|>
+  dplyr::select(holiday_flag, shapiro_p)
+print(normality_test)
+
+flights_holiday$holiday_flag<-as.factor(flights_holiday$holiday_flag)
+
+leveneTest(dep_delay~holiday_flag, data=flights_holiday)#levenes test for homogeneity of variance
+
+holiday_test<-wilcox.test(dep_delay~holiday_flag, data=flights_holiday)#Wilcoxon Rank Sum Test
+print(holiday_test)
+
+cat("Wilcoxon test p-value: ", signif(holiday_test$p.value,4))
+```
+##Departure Conclusion:
+Departure delays has a low p-value for both holiday and non holiday periods which means that the distributions are not normal in either group, this leads us to use a non-parametric test such as the Levene test and Wilcoxon rank sum test. For departure delays, the Levene's test p=0.4355 which is not significant meaning that variances are roughly equal between holiday and non holiday groups for departure delays. The Wilcoxon Rank Sum test p-value is ~2.42e-16 which is significant and allows us to conclude that departure delays are significant between holiday and non holiday periods. 
+
+
+
+#Arrival Delays 
+```{r}
+ggplot(flights_holiday, aes(x=holiday_flag, y=arr_delay, fill= holiday_flag))+
+  geom_boxplot(outlier.size = 0.5, alpha=0.7)+
+  labs(title= "Arrival Delay Distributions: Holiday Period vs. NonHoliday Flights",
+       x="", y="Arrival Delay (minutes)")+
+  theme(legend.position = "none")
+```
+```{r}
+set.seed(707)
+normality_test<-flights_holiday|> #normality test per group
+  group_by(holiday_flag)|>
+  summarise(sample_delays= list(sample(arr_delay, min(5000,n()), replace = FALSE)),
+            shapiro_p = shapiro.test(unlist(sample_delays))$p.value)|>
+  ungroup()|>
+  dplyr::select(holiday_flag, shapiro_p)
+print(normality_test)
+
+flights_holiday$holiday_flag<-as.factor(flights_holiday$holiday_flag)
+
+leveneTest(arr_delay~holiday_flag, data=flights_holiday)#levenes test for homogeneity of variance
+
+holiday_test<-wilcox.test(arr_delay~holiday_flag, data=flights_holiday)#Wilcoxon Rank Sum Test
+print(holiday_test)
+
+cat("Wilcoxon test p-value: ", signif(holiday_test$p.value,4))
+```
+##Arrival Conclusion:
+Arrival delays has a low p-value for both holiday and non holiday periods which means that the distributions are not normal in either group, this leads us to use a non-parametric test such as the Levene test and Wilcoxon rank sum test. For arrival delays, the Levene's test p=0.04781 which indicates that the variance differs significantly between holiday and non holiday groups for arrival delays. The Wilcoxon Rank Sum test p-value is ~7.33e-10 which is significant and allows us to conclude that departure delays are significant between holiday and non holiday periods. 
+
+###Overall Conclusion:
+We can conclude that Departure and Arrival flight delays occur more frequently or are more severe during major holiday periods, defined as the day before and day of the holiday. The analysis shows that arrival delays increase and exhibit significantly greater variability during holiday times, indicating inconsistent and unpredictable arrival times around major holidays. Although departure delays show similar mean increases during holidays, the variance remains stable suggesting that delays at departure are consistently worse but not erratic. This analysis highlights the operational challenges airlines and airports face during major holidays, emphasizing the need for planning and resource allocations to mitigate such delays during holiday periods. 
+
 
 \newpage
 
