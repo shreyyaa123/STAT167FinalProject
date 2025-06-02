@@ -34,6 +34,7 @@ library(car)
 library(multcomp)
 library(nortest)
 library(rstatix)
+library(dplyr)
 ```
 
 # Project Description:
@@ -356,9 +357,9 @@ ggplot(not_canceled, aes(x=distance, y=dep_delay))+
 #Flights traveled the longest by distance
 
 ```{r}
-longest_Distance <- not_canceled|>
-arrange(desc(distance))|>
-select(carrier, origin, dest)
+longest_Distance <- not_canceled |>
+  arrange(desc(distance)) |>
+  dplyr::select(carrier, origin, dest)
 longest_Distance
 ```
 
@@ -712,164 +713,6 @@ This correlation confidence interval does not include 0 but it does come close, 
 
 To provide some insight into our overall findings, we found that: (1) Different airlines have different delays on average, (2) Engine type does not seem to vary across airlines, and it doesn't seem to have a significant impact on delays, (3) Average cancellation rates vary between airlines, and (4) Airlines with faster mean speeds tend to experience lower arrival delays on average.
 
-
-### Question 4: Does the age of the plane affect flight delays?
-
-Within this main question we will perform hypothesis tests to answer the two following sub-questions:
-
-#### 1.  Do older planes experience more delays compared to newer ones? 
-
-$H_0$: There is no difference in the distribution of arrival delays across the different plane age groups.
-
-$H_1$: At least one plane age group has a different distribution of arrival delays compared to the others.
-
-```{r}
-# Join flights with planes to get plane manufacture year
-planes_fixed <- planes %>%
-  rename(plane_year = year)
-
-flights_planes <- flights %>%
-  inner_join(planes %>% rename(plane_year = year), by = "tailnum") %>%
-  filter(!is.na(plane_year), !is.na(arr_delay)) %>%
-  mutate(
-    plane_age = 2013 - plane_year,
-    age_group = case_when(
-      plane_age < 10 ~ "0-9 yrs",
-      plane_age < 20 ~ "10-19 yrs",
-      plane_age < 30 ~ "20-29 yrs",
-      TRUE ~ "30+ yrs"
-    )
-  )
-
-head(flights_planes)
-```
-
-```{r, echo=FALSE}
-ggplot(flights_planes, aes(x = age_group, y = arr_delay)) +
-  geom_boxplot(fill = "skyblue") +
-  labs(
-    title = "Arrival Delay by Plane Age Group",
-    x = "Plane Age Group",
-    y = "Arrival Delay (minutes)"
-  )
-```
-The boxplot shows that arrival delays are fairly similar across all plane age groups, with comparable medians and interquartile ranges. While each group has extreme outliers, there is no clear visual trend suggesting that older planes experience more delays than newer ones. We will run a hypothesis test to further our findings. 
-
-```{r}
-flights_planes$age_group <- as.factor(flights_planes$age_group)
-
-summary_stats <- flights_planes %>%
-  group_by(age_group) %>%
-  summarise(
-    mean_delay = mean(arr_delay, na.rm = TRUE),
-    count = n()
-  )
-print(summary_stats)
-
-# Normality test with sample per group
-set.seed(123)
-normality_test <- flights_planes %>%
-  group_by(age_group) %>%
-  summarise(
-    sample_delays = list(sample(arr_delay[!is.na(arr_delay)], min(5000, n()), replace = FALSE)),
-    shapiro_p = shapiro.test(unlist(sample_delays))$p.value
-  ) %>%
-  select(-sample_delays)
-print(normality_test)
-
-# Levene's Test for homogeneity of variances
-leveneTest(arr_delay ~ age_group, data = flights_planes)
-
-# Since homogeneity is violated, run Kruskal-Wallis test (non-parametric)
-kruskal.test(arr_delay ~ age_group, data = flights_planes)
-
-# post-hoc test for Kruskal-Wallis (Dunn test) if significant
-dunn.test(flights_planes$arr_delay, flights_planes$age_group, method = "bonferroni")
-
-```
-
-The Kruskal-Wallis test revealed a highly significant difference in arrival delays across plane age groups (p \< 2.2e-16), indicating that at least one group’s delay distribution differs from the others. Post-hoc pairwise comparisons using Dunn’s test with Bonferroni correction showed that planes aged 20–29 years experience significantly different delay patterns compared to both the 0–9 and 10–19 year groups (adjusted p-values \< 0.001). Additionally, planes aged 30+ years differ significantly from the 20–29 year group (adjusted p = 0.0002), but do not differ significantly from the younger 0–9 or 10–19 year groups. The difference between the 10–19 and 0–9 year groups was borderline significant (adjusted p = 0.0495). In summary, planes aged 20–29 years tend to have notably different arrival delays compared to most other age groups, highlighting a possible link between this age range and on-time performance issues.
-
-\newpage
-
-#### 2.  Are there specific plane models or manufactures associated with better on-time performance? 
-
-$H_0$: There is no difference in the distribution of arrival delays across different plane models or manufacturers.
-
-$H_1$: At least one plane model or manufacturer has a different distribution of arrival delays compared to the others.
-
-```{r}
-flights_manufacturer <- flights %>%
-  inner_join(planes, by = "tailnum") %>%
-  filter(!is.na(manufacturer), !is.na(arr_delay)) %>%
-  group_by(manufacturer) %>%
-  filter(n() > 50)
-```
-
-```{r, echo=FALSE}
-ggplot(flights_manufacturer, aes(x = reorder(manufacturer, arr_delay, FUN = median), y = arr_delay, fill = manufacturer)) +
-  geom_boxplot(outlier.size = 0.5, alpha = 0.7) +
-  coord_flip() +   # horizontal for readability
-  labs(
-    title = "Arrival Delay Distribution by Plane Manufacturer",
-    x = "Manufacturer",
-    y = "Arrival Delay (minutes)"
-  )
-```
-
-```{r}
-# filter manufacturers with more than 50 flights
-flights_manufacturer <- flights %>%
-  inner_join(planes, by = "tailnum") %>%
-  filter(!is.na(manufacturer), !is.na(arr_delay)) %>%
-  group_by(manufacturer) %>%
-  filter(n() > 50) %>%
-  ungroup()
-
-flights_manufacturer$manufacturer <- as.factor(flights_manufacturer$manufacturer)
-
-# Normality test per manufacturer group
-set.seed(123)
-normality_test <- flights_manufacturer %>%
-  group_by(manufacturer) %>%
-  summarise(
-    sample_delays = list(sample(arr_delay, min(5000, n()), replace = FALSE)),
-    shapiro_p = shapiro.test(unlist(sample_delays))$p.value
-  ) %>%
-  select(-sample_delays)
-print(normality_test)
-
-# Levene's Test for homogeneity of variance
-leveneTest(arr_delay ~ manufacturer, data = flights_manufacturer)
-
-# Kruskal-Wallis test 
-kruskal_result <- kruskal.test(arr_delay ~ manufacturer, data = flights_manufacturer)
-print(kruskal_result)
-
-if (kruskal_result$p.value < 0.05) {
-  dunn_result <- dunn.test(flights_manufacturer$arr_delay, flights_manufacturer$manufacturer, method = "bonferroni")
-  
-  sig_comparisons <- data.frame(
-    comparison = dunn_result$comparisons,
-    p_value = dunn_result$P.adjusted
-  ) %>% 
-    filter(p_value < 0.05) %>%
-    arrange(p_value) %>%
-    slice_head(n = 5) %>%  # Show only top 5
-    mutate(p_value = signif(p_value, 4))  # Optional: round p-values
-  
-  cat("Kruskal-Wallis p-value:", signif(kruskal_result$p.value, 4), "\n")
-  cat("Significant differences found. Top 5 manufacturer pairs with different arrival delays:\n\n")
-  print(sig_comparisons, row.names = FALSE)
-  
-} else {
-  cat("Kruskal-Wallis p-value:", signif(kruskal_result$p.value, 4), "\n")
-  cat("No significant differences found among manufacturers.\n")
-}
-```
-
-The Kruskal-Wallis test indicates a highly significant difference in arrival delays across plane manufacturers (χ² = 3770.9, df = 21, p < 2.2e-16). This strongly suggests that not all manufacturers have the same on-time performance. The post-hoc Dunn's test with Bonferroni correction highlights specific pairwise differences. Notably, comparisons involving Embraer show consistently significant differences with Airbus Industrie, Boeing, Bombardier Inc, and McDonnell Douglas, indicating that Embraer aircraft tend to have distinct arrival delay patterns compared to these manufacturers. Additionally, Airbus and McDonnell Douglas pairs also appear among the most significant differences. These results indicate that certain manufacturers, especially Embraer, are associated with notably different arrival delay profiles, reflecting differences in punctuality or operational factors across manufacturers.
-
 \newpage
 
 ### Question 3.  Are delays more frequent during major holidays?
@@ -960,6 +803,163 @@ Arrival delays has a low p-value for both holiday and non holiday periods which 
 
 ###Overall Conclusion:
 We can conclude that Departure and Arrival flight delays occur more frequently or are more severe during major holiday periods, defined as the day before and day of the holiday. The analysis shows that arrival delays increase and exhibit significantly greater variability during holiday times, indicating inconsistent and unpredictable arrival times around major holidays. Although departure delays show similar mean increases during holidays, the variance remains stable suggesting that delays at departure are consistently worse but not erratic. This analysis highlights the operational challenges airlines and airports face during major holidays, emphasizing the need for planning and resource allocations to mitigate such delays during holiday periods. 
+
+### Question 4: Does the age of the plane affect flight delays?
+
+Within this main question we will perform hypothesis tests to answer the two following sub-questions:
+
+#### 1.  Do older planes experience more delays compared to newer ones? 
+
+$H_0$: There is no difference in the distribution of arrival delays across the different plane age groups.
+
+$H_1$: At least one plane age group has a different distribution of arrival delays compared to the others.
+
+```{r}
+# Join flights with planes to get plane manufacture year
+planes_fixed <- planes %>%
+  rename(plane_year = year)
+
+flights_planes <- flights %>%
+  inner_join(planes %>% rename(plane_year = year), by = "tailnum") %>%
+  filter(!is.na(plane_year), !is.na(arr_delay)) %>%
+  mutate(
+    plane_age = 2013 - plane_year,
+    age_group = case_when(
+      plane_age < 10 ~ "0-9 yrs",
+      plane_age < 20 ~ "10-19 yrs",
+      plane_age < 30 ~ "20-29 yrs",
+      TRUE ~ "30+ yrs"
+    )
+  )
+
+head(flights_planes)
+```
+
+```{r, echo=FALSE}
+ggplot(flights_planes, aes(x = age_group, y = arr_delay)) +
+  geom_boxplot(fill = "skyblue") +
+  labs(
+    title = "Arrival Delay by Plane Age Group",
+    x = "Plane Age Group",
+    y = "Arrival Delay (minutes)"
+  )
+```
+The boxplot shows that arrival delays are fairly similar across all plane age groups, with comparable medians and interquartile ranges. While each group has extreme outliers, there is no clear visual trend suggesting that older planes experience more delays than newer ones. We will run a hypothesis test to further our findings. 
+
+```{r}
+flights_planes$age_group <- as.factor(flights_planes$age_group)
+
+summary_stats <- flights_planes %>%
+  group_by(age_group) %>%
+  summarise(
+    mean_delay = mean(arr_delay, na.rm = TRUE),
+    count = n()
+  )
+print(summary_stats)
+
+# Normality test with sample per group
+set.seed(123)
+normality_test <- flights_planes %>%
+  group_by(age_group) %>%
+  summarise(
+    sample_delays = list(sample(arr_delay[!is.na(arr_delay)], min(5000, n()), replace = FALSE)),
+    shapiro_p = shapiro.test(unlist(sample_delays))$p.value
+  ) %>%
+dplyr::select(-sample_delays)
+print(normality_test)
+
+# Levene's Test for homogeneity of variances
+leveneTest(arr_delay ~ age_group, data = flights_planes)
+
+# Since homogeneity is violated, run Kruskal-Wallis test (non-parametric)
+kruskal.test(arr_delay ~ age_group, data = flights_planes)
+
+# post-hoc test for Kruskal-Wallis (Dunn test) if significant
+dunn.test(flights_planes$arr_delay, flights_planes$age_group, method = "bonferroni")
+
+```
+
+The Kruskal-Wallis test revealed a highly significant difference in arrival delays across plane age groups (p \< 2.2e-16), indicating that at least one group’s delay distribution differs from the others. Post-hoc pairwise comparisons using Dunn’s test with Bonferroni correction showed that planes aged 20–29 years experience significantly different delay patterns compared to both the 0–9 and 10–19 year groups (adjusted p-values \< 0.001). Additionally, planes aged 30+ years differ significantly from the 20–29 year group (adjusted p = 0.0002), but do not differ significantly from the younger 0–9 or 10–19 year groups. The difference between the 10–19 and 0–9 year groups was borderline significant (adjusted p = 0.0495). In summary, planes aged 20–29 years tend to have notably different arrival delays compared to most other age groups, highlighting a possible link between this age range and on-time performance issues.
+
+\newpage
+
+#### 2.  Are there specific plane models or manufactures associated with better on-time performance? 
+
+$H_0$: There is no difference in the distribution of arrival delays across different plane models or manufacturers.
+
+$H_1$: At least one plane model or manufacturer has a different distribution of arrival delays compared to the others.
+
+```{r}
+flights_manufacturer <- flights %>%
+  inner_join(planes, by = "tailnum") %>%
+  filter(!is.na(manufacturer), !is.na(arr_delay)) %>%
+  group_by(manufacturer) %>%
+  filter(n() > 50)
+```
+
+```{r, echo=FALSE}
+ggplot(flights_manufacturer, aes(x = reorder(manufacturer, arr_delay, FUN = median), y = arr_delay, fill = manufacturer)) +
+  geom_boxplot(outlier.size = 0.5, alpha = 0.7) +
+  coord_flip() +   # horizontal for readability
+  labs(
+    title = "Arrival Delay Distribution by Plane Manufacturer",
+    x = "Manufacturer",
+    y = "Arrival Delay (minutes)"
+  )
+```
+
+```{r}
+# filter manufacturers with more than 50 flights
+flights_manufacturer <- flights %>%
+  inner_join(planes, by = "tailnum") %>%
+  filter(!is.na(manufacturer), !is.na(arr_delay)) %>%
+  group_by(manufacturer) %>%
+  filter(n() > 50) %>%
+  ungroup()
+
+flights_manufacturer$manufacturer <- as.factor(flights_manufacturer$manufacturer)
+
+# Normality test per manufacturer group
+set.seed(123)
+normality_test <- flights_manufacturer %>%
+  group_by(manufacturer) %>%
+  summarise(
+    sample_delays = list(sample(arr_delay, min(5000, n()), replace = FALSE)),
+    shapiro_p = shapiro.test(unlist(sample_delays))$p.value
+  ) %>%
+dplyr::select(-sample_delays)
+print(normality_test)
+
+# Levene's Test for homogeneity of variance
+leveneTest(arr_delay ~ manufacturer, data = flights_manufacturer)
+
+# Kruskal-Wallis test 
+kruskal_result <- kruskal.test(arr_delay ~ manufacturer, data = flights_manufacturer)
+print(kruskal_result)
+
+if (kruskal_result$p.value < 0.05) {
+  dunn_result <- dunn.test(flights_manufacturer$arr_delay, flights_manufacturer$manufacturer, method = "bonferroni")
+  
+  sig_comparisons <- data.frame(
+    comparison = dunn_result$comparisons,
+    p_value = dunn_result$P.adjusted
+  ) %>% 
+    filter(p_value < 0.05) %>%
+    arrange(p_value) %>%
+    slice_head(n = 5) %>%  # Show only top 5
+    mutate(p_value = signif(p_value, 4))  # Optional: round p-values
+  
+  cat("Kruskal-Wallis p-value:", signif(kruskal_result$p.value, 4), "\n")
+  cat("Significant differences found. Top 5 manufacturer pairs with different arrival delays:\n\n")
+  print(sig_comparisons, row.names = FALSE)
+  
+} else {
+  cat("Kruskal-Wallis p-value:", signif(kruskal_result$p.value, 4), "\n")
+  cat("No significant differences found among manufacturers.\n")
+}
+```
+
+The Kruskal-Wallis test indicates a highly significant difference in arrival delays across plane manufacturers (χ² = 3770.9, df = 21, p < 2.2e-16). This strongly suggests that not all manufacturers have the same on-time performance. The post-hoc Dunn's test with Bonferroni correction highlights specific pairwise differences. Notably, comparisons involving Embraer show consistently significant differences with Airbus Industrie, Boeing, Bombardier Inc, and McDonnell Douglas, indicating that Embraer aircraft tend to have distinct arrival delay patterns compared to these manufacturers. Additionally, Airbus and McDonnell Douglas pairs also appear among the most significant differences. These results indicate that certain manufacturers, especially Embraer, are associated with notably different arrival delay profiles, reflecting differences in punctuality or operational factors across manufacturers.
 
 
 \newpage
