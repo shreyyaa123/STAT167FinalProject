@@ -12,6 +12,7 @@ editor_options:
 ---
 
 ## Libraries
+
 ```{r, results = 'hide', message=FALSE}
 # install.packages("dunn.test")
 library(nycflights13)
@@ -486,11 +487,191 @@ The process of analysis will involve data cleaning after forming our question, b
 
 # Analysis:
 
+### Question 1: How do weather conditions affect flight delays?
+
+### 1. Are specific weather variables (e.g., precipitation, temperature, humidity) correlated with arrival delays?
+
+```{r}
+head(weather)
+head(flights)
+
+not_canceled <- filter(flights, !is.na(dep_delay), !is.na(arr_delay))
+head(not_canceled)
+
+```
+
+join columns of weather and uncancelled flights
+
+```{r}
+flights_weather <- left_join(not_canceled, weather, by = c("year", "month", "day", "hour", "origin"))
+
+flights_weather <- flights_weather |>
+  filter(!is.na(dep_delay))
+flights_weather
+```
+
+Temperature by month and departure delays
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+
+f_w_by_month <- flights_weather |>
+  mutate(month = factor(month, levels = 1:12, labels = month.name))
+
+ggplot(f_w_by_month, aes(x = temp, y = dep_delay)) + 
+  geom_point() +
+  facet_wrap(~ month, ncol = 3)
+
+ggplot(f_w_by_month, aes(x = temp, y = dep_delay)) +
+  geom_bar(stat = "identity")
+```
+
+Humidity by month and departure delays
+
+```{r}
+ggplot(f_w_by_month, aes(x = humid, y = dep_delay)) + 
+  geom_point() +
+  facet_wrap(~ month, ncol = 3)
+
+ggplot(f_w_by_month, aes(x = humid, y = dep_delay)) +
+  geom_bar(stat = "identity")
+```
+
+Precipitation by month and departure delays
+
+```{r}
+ggplot(f_w_by_month, aes(x = precip, y = dep_delay)) + 
+  geom_point() +
+  facet_wrap(~ month, ncol = 3)
+
+ggplot(f_w_by_month, aes(x = precip, y = dep_delay)) +
+  geom_bar(stat = "identity")
+```
+
+```{r}
+weather_vars <- f_w_by_month |>
+  select(temp, wind_speed, precip, visib, dep_delay)
+#filter out extreme
+weather_vars <- filter(weather_vars, dep_delay <= 300)
+cor(weather_vars, use = "complete.obs")
+
+summary(f_w_by_month$precip)
+```
+
+-   Visibility and departure delay has the weakest negative correlation
+
+-   Strongest positive linear relationship is between precipitation and departure delay
+
+Time Series (Precipitation and Departure Delay)
+
+```{r}
+daily_data <- f_w_by_month |>
+  group_by(year, month, day) |>
+  summarise(
+    mean_delay = mean(dep_delay, na.rm = TRUE),
+    mean_temp = mean(temp, na.rm = TRUE),
+    mean_humid = mean(humid, na.rm = TRUE),
+    mean_precip = mean(precip, na.rm = TRUE),
+    .groups = "keep"
+  )
+#make the date column 
+daily_data <- mutate(daily_data, 
+                     monthly_num = match(month, month.name),
+                     date = as.Date(paste(year, monthly_num, day, sep = "-")))
+#delays and weather variables over time
+ggplot(daily_data, aes(x = date)) +
+  geom_line(aes(y = mean_delay, color = "Delay")) +
+  geom_line(aes(y = mean_temp, color = "Temperature")) +
+  scale_y_continuous(sec.axis = sec_axis(~., name = "Temperature (F)")) +
+  labs(title = "Daily Average Delay vs. Temperature", y = "Delay (mins)") +
+  theme_minimal()
+
+ggplot(daily_data, aes(x = date)) +
+  geom_line(aes(y = mean_delay, color = "Delay")) +
+  geom_line(aes(y = mean_humid, color = "Humidity")) +
+  scale_y_continuous(sec.axis = sec_axis(~., name = "Relative Humidity")) +
+  labs(title = "Daily Average Delay vs. Humidity", y = "Delay (mins)") +
+  theme_minimal()
+
+ggplot(daily_data, aes(x = date)) +
+  geom_line(aes(y = mean_delay, color = "Delay")) +
+  geom_line(aes(y = mean_precip, color = "Precipitation")) +
+  scale_y_continuous(sec.axis = sec_axis(~., name = "Inches")) +
+  labs(title = "Daily Average Delay vs. Humidity", y = "Delay (mins)") +
+  theme_minimal()
+```
+
+Both variables rise and fall together for Temperature vs. Average Delay and Humidity vs. Average Delay. This suggests that there is a seasonal or temporal pattern and that a positive association exists. Since precipitation is mostly entered as 0, it will provide little variability for analysis.
+
+Linear Regression Model
+
+```{r}
+model_data <- flights_weather |>
+  select(arr_delay, precip, temp, humid, visib, carrier, origin, month, hour) |>
+  filter(!is.na(arr_delay), !is.na(precip), !is.na(temp), !is.na(humid), !is.na(visib), !is.na(carrier), !is.na(origin), !is.na(month), !is.na(humid))
+
+lm_model <- lm(arr_delay ~ precip + temp + humid + visib + carrier + origin + month + hour, data = model_data)
+summary(lm_model)
+```
+
+-   R\^2 is 0.035, 8.35% of the variance in arrival delays is explained
+
+-   p \< 2.2e-16, model is statistically significant overall
+
+-   Heavy precipitation has a strong, positive effect on delay, Estimate = +88.5
+
+-   Temperature has a small, positive effect, Estimate = +0.055
+
+-   Higher humidity is mildly associated with more delay
+
+While predictive power is mild due to the large amount of noise in the delay data, this model provides useful insight into the impact of weather and delay factors. Since the model only explains 8.35% of the variance, it suggests that while weather has an impact on arrival delays, it only accounts for a small portion of the variance and a lot of other factors such as carrier, traffic, and other specific details relating to the plane contribute heavily to delays.
+
+Cross-validation
+
+```{r}
+library(boot)
+
+model_data <- na.omit(model_data)  
+lm_model2 <- glm(arr_delay ~ precip + temp + humid + visib, data = model_data)
+
+set.seed(167)
+cv_results <- cv.glm(data = model_data, glmfit = lm_model2, K = 10)
+
+cv_results$delta 
+cv_results
+```
+
+Linear model has a Root Mean Square Error of \~ 44 minutes, predictions are about 44 minutes off from the actual arrival delays.
+
+Visualization
+
+```{r}
+ggplot(model_data, aes(x = precip, y = arr_delay)) +
+  geom_point(alpha = 0.1) +
+  geom_smooth(method = "lm", col = "blue") +
+  labs(title = "Arrival Delay vs Precipitation")
+
+ggplot(model_data, aes(x = temp, y = arr_delay)) +
+  geom_point(alpha = 0.1) +
+  geom_smooth(method = "lm", col = "blue") +
+  labs(title = "Arrival Delay vs Temperature")
+
+ggplot(model_data, aes(x = humid, y = arr_delay)) +
+  geom_point(alpha = 0.1) +
+  geom_smooth(method = "lm", col = "blue") +
+  labs(title = "Arrival Delay vs Humidity")
+```
+
+Interpretation:
+
+The noticeable upward slope indicates a positive linear relationship for precipitation and arrival delays. Since most points cluster near zero precipitation, the delay increase is mostly evident during heavy rainfall. The slope for delays and temperature is close to zero, and the distribution appears to be very even, suggesting that temperature has a very small impact, as evident in the summary of the model. Since less points cluster near the lower end of humidity, and there is a small but existing positive slope, higher humidity is mildly associated with more delay.
+
 ### Question 4: Does the age of the plane affect flight delays?
 
 Within this main question we will perform hypothesis tests to answer the two following sub-questions:
 
-#### 1.  Do older planes experience more delays compared to newer ones? 
+#### 1. Do older planes experience more delays compared to newer ones? 
 
 $H_0$: There is no difference in the distribution of arrival delays across the different plane age groups.
 
@@ -526,7 +707,8 @@ ggplot(flights_planes, aes(x = age_group, y = arr_delay)) +
     y = "Arrival Delay (minutes)"
   )
 ```
-The boxplot shows that arrival delays are fairly similar across all plane age groups, with comparable medians and interquartile ranges. While each group has extreme outliers, there is no clear visual trend suggesting that older planes experience more delays than newer ones. We will run a hypothesis test to further our findings. 
+
+The boxplot shows that arrival delays are fairly similar across all plane age groups, with comparable medians and interquartile ranges. While each group has extreme outliers, there is no clear visual trend suggesting that older planes experience more delays than newer ones. We will run a hypothesis test to further our findings.
 
 ```{r}
 flights_planes$age_group <- as.factor(flights_planes$age_group)
@@ -563,7 +745,7 @@ dunn.test(flights_planes$arr_delay, flights_planes$age_group, method = "bonferro
 
 The Kruskal-Wallis test revealed a highly significant difference in arrival delays across plane age groups (p \< 2.2e-16), indicating that at least one group’s delay distribution differs from the others. Post-hoc pairwise comparisons using Dunn’s test with Bonferroni correction showed that planes aged 20–29 years experience significantly different delay patterns compared to both the 0–9 and 10–19 year groups (adjusted p-values \< 0.001). Additionally, planes aged 30+ years differ significantly from the 20–29 year group (adjusted p = 0.0002), but do not differ significantly from the younger 0–9 or 10–19 year groups. The difference between the 10–19 and 0–9 year groups was borderline significant (adjusted p = 0.0495). In summary, planes aged 20–29 years tend to have notably different arrival delays compared to most other age groups, highlighting a possible link between this age range and on-time performance issues.
 
-#### 2.  Are there specific plane models or manufactures associated with better on-time performance? 
+#### 2. Are there specific plane models or manufactures associated with better on-time performance? 
 
 $H_0$: There is no difference in the distribution of arrival delays across different plane models or manufacturers.
 
@@ -639,7 +821,7 @@ if (kruskal_result$p.value < 0.05) {
 }
 ```
 
-The Kruskal-Wallis test indicates a highly significant difference in arrival delays across plane manufacturers (χ² = 3770.9, df = 21, p < 2.2e-16). This strongly suggests that not all manufacturers have the same on-time performance. The post-hoc Dunn's test with Bonferroni correction highlights specific pairwise differences. Notably, comparisons involving Embraer show consistently significant differences with Airbus Industrie, Boeing, Bombardier Inc, and McDonnell Douglas, indicating that Embraer aircraft tend to have distinct arrival delay patterns compared to these manufacturers. Additionally, Airbus and McDonnell Douglas pairs also appear among the most significant differences. These results indicate that certain manufacturers, especially Embraer, are associated with notably different arrival delay profiles, reflecting differences in punctuality or operational factors across manufacturers.
+The Kruskal-Wallis test indicates a highly significant difference in arrival delays across plane manufacturers (χ² = 3770.9, df = 21, p \< 2.2e-16). This strongly suggests that not all manufacturers have the same on-time performance. The post-hoc Dunn's test with Bonferroni correction highlights specific pairwise differences. Notably, comparisons involving Embraer show consistently significant differences with Airbus Industrie, Boeing, Bombardier Inc, and McDonnell Douglas, indicating that Embraer aircraft tend to have distinct arrival delay patterns compared to these manufacturers. Additionally, Airbus and McDonnell Douglas pairs also appear among the most significant differences. These results indicate that certain manufacturers, especially Embraer, are associated with notably different arrival delay profiles, reflecting differences in punctuality or operational factors across manufacturers.
 
 \newpage
 
