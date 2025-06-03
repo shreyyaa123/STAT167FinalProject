@@ -667,6 +667,41 @@ Interpretation:
 
 The noticeable upward slope indicates a positive linear relationship for precipitation and arrival delays. Since most points cluster near zero precipitation, the delay increase is mostly evident during heavy rainfall. The slope for delays and temperature is close to zero, and the distribution appears to be very even, suggesting that temperature has a very small impact, as evident in the summary of the model. Since less points cluster near the lower end of humidity, and there is a small but existing positive slope, higher humidity is mildly associated with more delay.
 
+#### 2. How do extreme weather conditions (e.g. heavy precipitation, low visibility, cold temperature) impact the likelihood of severe delays (e.g. delays \> 60 minutes)? 
+
+```{r}
+library(dplyr)
+flights_weather <- mutate(flights_weather, severe_delay = arr_delay > 60)
+
+flights_weather <- flights_weather |>
+  mutate(
+    extreme_precip = precip > 0.5,
+    low_visib = visib < 1,
+    high_wind = wind_speed > 20,
+    cold_temp = temp < 32,
+    high_temp = temp > 90
+  )
+
+```
+
+```{r}
+lm_severe <- glm(severe_delay ~ extreme_precip + low_visib + high_wind + cold_temp + high_temp, data = flights_weather, family = "binomial")
+summary(lm_severe)
+```
+
+Flights in heavy rain are 4.66 times more likely to be severely delayed compared to flights without heavy precipitation. The odds of a severe delay is increased by a factor of 2.9 when low visibility (less than 1) is present in the case. In addition, high wind speed increases the odds of a severe delay by a factor of 1.45. Cold temperature seems to decrease the odds of a severe delay by 13%, and high temperature increases the odds of severe delays by 30%.
+
+```{r}
+library(ggplot2)
+
+flights_weather %>%
+  ggplot(aes(x = extreme_weather, fill = severe_delay)) +
+  geom_bar(position = "fill") +
+  labs(y = "Proportion", title = "Proportion of Severe Delays by Weather Condition")
+```
+
+Extreme weather cases make up the majority of severely delayed flights. However, the difference between extreme weather cases and the non extreme weather cases is not overwhelming which further suggests the idea that weather only impacts arrival delays up to a certain point, and that other factors unrelated to weather explain a large chunk of the variance.
+
 ### Question 4: Does the age of the plane affect flight delays?
 
 Within this main question we will perform hypothesis tests to answer the two following sub-questions:
