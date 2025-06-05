@@ -1,12 +1,12 @@
 ---
 title: "Final Project STAT167"
-author:
-  - "Group: Statistically Speaking"
-  - "Shreya Mohan, Kalyani Mantirraju, Crystal Arevalo, Karen Alvarez, Mason Lam, Eric Yang"
+author: "Group: Statistically Speaking — Shreya Mohan, Kalyani Mantirraju, Crystal Arevalo, Karen Alvarez, Mason Lam"
 date: "06/02/2025"
 output:
   pdf_document:
     latex_engine: xelatex
+  html_document:
+    df_print: paged
 editor_options:
   chunk_output_type: inline
 ---
@@ -14,8 +14,9 @@ editor_options:
 ## Libraries
 
 ```{r, results = 'hide', message=FALSE}
-#install.packages("dunn.test")
-#install.packages("multcomp")
+
+# install.packages("dunn.test")
+# install.packages("multcomp")
 # install.packages("nortest")
 # install.packages("rstatix")
 # install.packages("mgcv")
@@ -33,6 +34,7 @@ library(broom)
 library(multcomp)
 library(nortest)
 library(boot)
+
 ```
 
 # Project Description:
@@ -79,10 +81,12 @@ Understanding factors that contribute to flight delays is critical for informing
 ## 3. Airports dataset: Airport names and locations
 
 ```{r}
+
 head(airports)
 names(airports)
 str(airports)
 glimpse(airports)
+
 ```
 
 ### Variables:
@@ -120,13 +124,13 @@ glimpse(airports)
     -   time_hour : date and hour of the recording as POSIXct date
 
 \newpage
-\begin{center}
-\section*{Exploratory Data Analysis}
-\end{center}
+
+# Exploratory Data Analysis
 
 ## Planes Dataset EDA
 
 ```{r, echo=FALSE}
+
 cat("\nMissing values per column:\n")
 print(colSums(is.na(planes)))
 
@@ -138,9 +142,11 @@ print(head(planes))
 
 cat("\nSummary statistics:\n")
 print(summary(planes))
+
 ```
 
 ```{r, echo=FALSE}
+
 planes %>%
   count(manufacturer, sort = TRUE) %>%
   top_n(10) %>%
@@ -148,14 +154,17 @@ planes %>%
   geom_col(fill = "darkgreen") +
   coord_flip() +
   labs(title = "Top 10 Plane Manufacturers", x = "Manufacturer", y = "Number of Planes")
+
 ```
 
 The visualization above shows the top 10 plane manufacturers present in the data-set. Boeing has the largest amount of planes with approximately 1750 planes, and Airbus has the second most with approximately 400 planes.
 
-```{r, echo=FALSE}
+```{r, echo = FALSE, warning = FALSE}
+
 ggplot(planes, aes(x = year)) +
   geom_histogram(binwidth = 1, fill = "midnightblue", color = "white") +
   labs(title = "Distribution of Plane Manufacture Years", x = "Year", y = "Count")
+
 ```
 
 This histogram shows the distribution of plane manufacture years, with the majority of planes built between the mid-1990s and early 2000s. There is a notable peak around the year 2000, indicating a surge in plane production during that period.
@@ -165,6 +174,7 @@ This histogram shows the distribution of plane manufacture years, with the major
 Dimensions and column names of the airlines dataset
 
 ```{r, echo=FALSE}
+
 cat("\nMissing values per column:\n")
 print(colSums(is.na(airlines)))
 
@@ -176,16 +186,20 @@ print(head(airlines))
 
 cat("\nSummary statistics:\n")
 print(summary(airlines))
+
 ```
 
 Viewing all the Unique Airlines:
 
 ```{r}
+
 airlines %>%
   arrange(name)
+
 ```
 
 ```{r}
+
 # Join flights and airline names
 flights_airlines <- flights %>%
   left_join(airlines, by = "carrier")
@@ -208,11 +222,13 @@ ggplot(avg_delays, aes(x = reorder(name, avg_dep_delay), y = avg_dep_delay)) +
     x = "Airline",
     y = "Avg Departure Delay (min)"
   )
+
 ```
 
 We can see that on average, Frontier Airlines has the most departure delay at around 20 min, with ExpressJet roughly around the same 20 minutes. Less than half the Airlines seem to be past the 13 minute delay mark.
 
 ```{r}
+
 cancel_rate <- flights_airlines %>%
   mutate(cancelled = is.na(dep_delay)) %>%
   group_by(name) %>%
@@ -226,13 +242,15 @@ ggplot(cancel_rate, aes(x = reorder(name, cancel_rate), y = cancel_rate)) +
     x = "Airline",
     y = "Cancelation Rate"
   )
+
 ```
 
-As we can see from above, Skywest Airlines Inc has the highest cancellation rate, with Mesa Airlines very closely behind, and a huge drop off at Endeavor Air Inc. \## Planes Dataset EDA
+As we can see from above, Skywest Airlines Inc has the highest cancellation rate, with Mesa Airlines very closely behind, and a huge drop off at Endeavor Air Inc. 
 
 ## Flights Dataset EDA:
 
 ```{r, echo=FALSE}
+
 cat("\nMissing values per column:\n")
 print(colSums(is.na(flights)))
 
@@ -244,21 +262,25 @@ print(head(flights))
 
 cat("\nSummary statistics:\n")
 print(summary(flights))
+
 ```
 
 Most of our analysis is based on how other variables and datasets affect and compare to the flights dataset. We are seeing how the arrival time, departure delay time, departure time, arrival delay time, and other variables are affected.
 
-flights that were not canceled \ We will be using these the not_canceled data for the rest of the EDA
+flights that were not canceled - We will be using these the not_canceled data for the rest of the EDA
 
 ```{r}
+
 not_canceled <- filter(flights, !is.na(dep_delay), !is.na(arr_delay))
 not_canceled
+
 ```
 
 Basic delay analysis
 Distribution and Proportion of delayed flights that were not canceled
 
 ```{r}
+
 #histograms
 hist(not_canceled$dep_delay, breaks=100, main = "Departure Delays",xlab = "Minutes")
 hist(not_canceled$arr_delay, breaks=100, main ="Arrival Delays", xlab = "Minutes")
@@ -266,6 +288,7 @@ hist(not_canceled$arr_delay, breaks=100, main ="Arrival Delays", xlab = "Minutes
 #proportions
 mean(not_canceled$dep_delay>0, na.rm=TRUE)
 mean(not_canceled$arr_delay>0, na.rm=TRUE)
+
 ```
 
 Most of the departure delays do not go over 200 minutes and the arrival delays have very few delays past 200 minutes.
@@ -273,6 +296,7 @@ Most of the departure delays do not go over 200 minutes and the arrival delays h
 #### Delay patterns
 
 ```{r}
+
 #convert time to hours
 not_canceled$dep_hour <-floor(not_canceled$sched_dep_time/100)
 not_canceled$arr_hour <-floor(not_canceled$sched_arr_time/100)
@@ -293,9 +317,11 @@ We can see that many of the delays happen further in the day and peak at about 1
 #### Delays by Airport
 
 ```{r}
+
 not_canceled |>
   group_by(origin)|>
   summarize(avg_dep_delay= mean(dep_delay, na.rm=TRUE), avg_arr_delay= mean(arr_delay, na.rm=TRUE))
+
 ```
 
 EWR has the highest average departure and arrival delay followed by JFK and then LGA
@@ -303,9 +329,10 @@ EWR has the highest average departure and arrival delay followed by JFK and then
 ##### Ranking airlines by delay
 
 ```{r}
+
 not_canceled|>
   group_by(carrier)|>
-  summarize(avg_dep_delay = mean(dep_delay, na.rn=TRUE))|>
+  summarize(avg_dep_delay = mean(dep_delay, na.rm=TRUE))|>
   arrange(desc(avg_dep_delay))
 
 ```
@@ -319,7 +346,7 @@ not_canceled|>
   mutate(made_up_time = dep_delay- arr_delay)|>
   ggplot(aes(x=made_up_time))+
   geom_histogram(bins=100)+
-  labs(titel="Made up Time in Air", x= "Minutes Saved", y="Count")
+  labs(title="Made up Time in Air", x= "Minutes Saved", y="Count")
 
 ```
 
@@ -328,6 +355,7 @@ We can see that the majority of the flights did not save any minutes on the arri
 ##### Delays by Month
 
 ```{r}
+
 not_canceled|>
   group_by(month)|>
   summarize(mean_dep_delay=mean(dep_delay, na.rm=TRUE))|>
@@ -343,6 +371,7 @@ we see that the majority of flights are delayed from May to mid July, and there 
 ##### Does distance affect the amount of delays?
 
 ```{r}
+
 ggplot(not_canceled, aes(x=distance, y=dep_delay))+
   geom_point(alpha=0.2)+
   geom_smooth(method = "lm", se=TRUE,color= "Pink")+
@@ -355,10 +384,12 @@ We can see that there is not much of an effect of Distance on Departure delay.
 ##### Flights traveled the longest by distance
 
 ```{r}
+
 longest_Distance <- not_canceled |>
   arrange(desc(distance)) |>
   dplyr::select(carrier, origin, dest)
 longest_Distance
+
 ```
 
 We see that HA is the carrier with the longest flights and they all start at JFK airport and land at HNL.
@@ -366,6 +397,7 @@ We see that HA is the carrier with the longest flights and they all start at JFK
 ##### arrival delays per carrier
 
 ```{r}
+
 carrier_Dest<-not_canceled |>
   group_by(carrier, dest) |>
   summarize(avg_arr_Delay = mean(arr_delay, na.rm= TRUE), .group= "drop")
@@ -374,6 +406,7 @@ carrier_Dest<-not_canceled |>
   coord_flip()+
   labs(title = "Average Arrival Delay by Carrier",x = "Carrier", y= "Average Arrival Delay (minutes)")+
   theme_minimal()
+  
 ```
 
 ## Weather Dataset EDA
@@ -391,6 +424,7 @@ print(head(weather))
 
 cat("\nSummary statistics:\n")
 print(summary(weather))
+
 ```
 
 Related Questions from our Proposal:
@@ -518,26 +552,31 @@ The process of analysis will involve data cleaning after forming our question, b
 ### 1. Are specific weather variables (e.g., precipitation, temperature, humidity) correlated with arrival delays?
 
 ```{r}
+
 head(weather)
 head(flights)
 
 not_canceled <- filter(flights, !is.na(dep_delay), !is.na(arr_delay))
 head(not_canceled)
+
 ```
 
 join columns of weather and uncancelled flights
 
 ```{r}
+
 flights_weather <- left_join(not_canceled, weather, by = c("year", "month", "day", "hour", "origin"))
 
 flights_weather <- flights_weather |>
   filter(!is.na(dep_delay))
 flights_weather
+
 ```
 
 Temperature by month and departure delays
 
-```{r}
+```{r, warning = FALSE}
+
 #mutate to month 
 f_w_by_month <- flights_weather |>
   mutate(month = factor(month, levels = 1:12, labels = month.name))
@@ -548,31 +587,37 @@ ggplot(f_w_by_month, aes(x = temp, y = dep_delay)) +
 
 ggplot(f_w_by_month, aes(x = temp, y = dep_delay)) +
   geom_bar(stat = "identity")
+
 ```
 
 Humidity by month and departure delays
 
-```{r}
+```{r, warning = FALSE}
+
 ggplot(f_w_by_month, aes(x = humid, y = dep_delay)) + 
   geom_point() +
   facet_wrap(~ month, ncol = 3)
 
 ggplot(f_w_by_month, aes(x = humid, y = dep_delay)) +
   geom_bar(stat = "identity")
+
 ```
 
 Precipitation by month and departure delays
 
-```{r}
+```{r, warning = FALSE}
+
 ggplot(f_w_by_month, aes(x = precip, y = dep_delay)) + 
   geom_point() +
   facet_wrap(~ month, ncol = 3)
 
 ggplot(f_w_by_month, aes(x = precip, y = dep_delay)) +
   geom_bar(stat = "identity")
+
 ```
 
 ```{r}
+
 weather_vars <- f_w_by_month |>
   dplyr::select(temp, wind_speed, precip, visib, dep_delay)
 
@@ -581,6 +626,7 @@ weather_vars <- filter(weather_vars, dep_delay <= 300)
 cor(weather_vars, use = "complete.obs")
 
 summary(f_w_by_month$precip)
+
 ```
 
 -   Visibility and departure delay has the weakest negative correlation
@@ -589,7 +635,8 @@ summary(f_w_by_month$precip)
 
 Time Series (Precipitation and Departure Delay)
 
-```{r}
+```{r, warning = FALSE}
+
 daily_data <- f_w_by_month |>
   group_by(year, month, day) |>
   summarise(
@@ -626,6 +673,7 @@ ggplot(daily_data, aes(x = date)) +
   scale_y_continuous(sec.axis = sec_axis(~., name = "Inches")) +
   labs(title = "Daily Average Delay vs. Humidity", y = "Delay (mins)") +
   theme_minimal()
+
 ```
 
 Both variables rise and fall together for Temperature vs. Average Delay and Humidity vs. Average Delay. This suggests that there is a seasonal or temporal pattern and that a positive association exists. Since precipitation is mostly entered as 0, it will provide little variability for analysis.
@@ -633,6 +681,7 @@ Both variables rise and fall together for Temperature vs. Average Delay and Humi
 Linear Regression Model
 
 ```{r}
+
 #omit missing values
 model_data <- flights_weather |>
   dplyr::select(arr_delay, precip, temp, humid, visib, carrier, origin, month, hour) |>
@@ -641,11 +690,12 @@ model_data <- flights_weather |>
 #linear regression model
 lm_model <- lm(arr_delay ~ precip + temp + humid + visib + carrier + origin + month + hour, data = model_data)
 summary(lm_model)
+
 ```
 
--   R\^2 is 0.035, 8.35% of the variance in arrival delays is explained
+-   R^2 is 0.035, 8.35% of the variance in arrival delays is explained
 
--   p \< 2.2e-16, model is statistically significant overall
+-   p < 2.2e-16, model is statistically significant overall
 
 -   Heavy precipitation has a strong, positive effect on delay, Estimate = +88.5
 
@@ -658,6 +708,7 @@ While predictive power is mild due to the large amount of noise in the delay dat
 Cross-validation
 
 ```{r}
+
 model_data <- na.omit(model_data)  
 lm_model2 <- glm(arr_delay ~ precip + temp + humid + visib, data = model_data)
 
@@ -665,13 +716,15 @@ set.seed(167)
 cv_results <- cv.glm(data = model_data, glmfit = lm_model2, K = 10)
 
 cv_results$delta 
+
 ```
 
-Linear model has a Root Mean Square Error of \~ 44 minutes, predictions are about 44 minutes off from the actual arrival delays.
+Linear model has a Root Mean Square Error of ~44 minutes, predictions are about 44 minutes off from the actual arrival delays.
 
 Visualization
 
 ```{r}
+
 ggplot(model_data, aes(x = precip, y = arr_delay)) +
   geom_point(alpha = 0.1) +
   geom_smooth(method = "lm", col = "blue") +
@@ -686,15 +739,17 @@ ggplot(model_data, aes(x = humid, y = arr_delay)) +
   geom_point(alpha = 0.1) +
   geom_smooth(method = "lm", col = "blue") +
   labs(title = "Arrival Delay vs Humidity")
+
 ```
 
 Interpretation:
 
 The noticeable upward slope indicates a positive linear relationship for precipitation and arrival delays. Since most points cluster near zero precipitation, the delay increase is mostly evident during heavy rainfall. The slope for delays and temperature is close to zero, and the distribution appears to be very even, suggesting that temperature has a very small impact, as evident in the summary of the model. Since less points cluster near the lower end of humidity, and there is a small but existing positive slope, higher humidity is mildly associated with more delay.
 
-#### 2. How do extreme weather conditions (e.g. heavy precipitation, low visibility, cold temperature) impact the likelihood of severe delays (e.g. delays \> 60 minutes)? 
+#### 2. How do extreme weather conditions (e.g. heavy precipitation, low visibility, cold temperature) impact the likelihood of severe delays (e.g. delays > 60 minutes)?
 
 ```{r}
+
 flights_weather <- mutate(flights_weather, severe_delay = arr_delay > 60)
 
 #create extreme weather vars and conditions
@@ -711,28 +766,34 @@ flights_weather <- flights_weather |>
 ```
 
 ```{r}
+
 #use glm for logistic regression
 lm_severe <- glm(severe_delay ~ extreme_precip + low_visib + high_wind + cold_temp + high_temp, data = flights_weather, family = "binomial")
 summary(lm_severe)
+
 ```
 
 Flights in heavy rain are 4.66 times more likely to be severely delayed compared to flights without heavy precipitation. The odds of a severe delay is increased by a factor of 2.9 when low visibility (less than 1) is present in the case. In addition, high wind speed increases the odds of a severe delay by a factor of 1.45. Cold temperature seems to decrease the odds of a severe delay by 13%, and high temperature increases the odds of severe delays by 30%.
 
 ```{r}
+
 #proportion chart of severity of weather and delay
 flights_weather %>%
   ggplot(aes(x = extreme_weather, fill = severe_delay)) +
   geom_bar(position = "fill") +
   labs(y = "Proportion", title = "Proportion of Severe Delays by Weather Condition")
+
 ```
 
 Extreme weather cases make up the majority of severely delayed flights. However, the difference between extreme weather cases and the non extreme weather cases is not overwhelming which further suggests the idea that weather only impacts arrival delays up to a certain point, and that other factors unrelated to weather explain a large chunk of the variance.
+
+\newpage
 
 ### Question 2: How do differences between airlines influence flight delays?
 
 To answer this question, we can explore factors such as airlines, engines,
 
-#### 1. Do some airlines have more delays than others?
+#### 1. Do some airlines have more delays than others? 
 
 $H_0$: All airlines have the same average delay. 
 
@@ -877,7 +938,7 @@ $H_A$: At least one airline has a different mean speed from the others.
 
 We can test this using ANOVA, first checking assumptions of normality and equal variances.
 
-```{r}
+```{r, warning = FALSE}
 
 flights_speed = flights %>%
   filter(!is.na(air_time), air_time > 0, !is.na(distance)) %>%
@@ -907,7 +968,7 @@ The results show us that there is a drastic evidence to show a difference betwee
 
 First, we can see how speed affects delays by each airline.
 
-```{r}
+```{r, warning = FALSE}
 
 speed_delay_summary = flights_speed %>%
   filter(!is.na(arr_delay)) %>%
@@ -945,6 +1006,7 @@ $H_0$: There is no difference in the distribution of arrival delays during major
 $H_1$: Arrival delays are different during major holidays compared to other days.
 
 ```{r}
+
 #identifying holiday periods
 holidayDates<- as.Date(c(
   "2013-11-27",  #day before thanksgiving 
@@ -960,19 +1022,23 @@ flights_holiday<-flights|>
   filter(!is.na(arr_delay))
 
 table(flights_holiday$holiday_flag)
+
 ```
 
 Departure Delays
 
 ```{r}
+
 ggplot(flights_holiday, aes(x=holiday_flag, y=dep_delay, fill= holiday_flag))+
   geom_boxplot(outlier.size = 0.5, alpha=0.7)+
   labs(title= "Departure Delay Distributions: Holiday Period vs. NonHoliday Flights",
        x="", y="Departure Delay (minutes)")+
   theme(legend.position = "none")
+
 ```
 
 ```{r}
+
 set.seed(707)
 normality_test<-flights_holiday|> #normality test per group
   group_by(holiday_flag)|>
@@ -990,21 +1056,25 @@ holiday_test<-wilcox.test(dep_delay~holiday_flag, data=flights_holiday)#Wilcoxon
 print(holiday_test)
 
 cat("Wilcoxon test p-value: ", signif(holiday_test$p.value,4))
+
 ```
 
-##Departure Conclusion: Departure delays has a low p-value for both holiday and non holiday periods which means that the distributions are not normal in either group, this leads us to use a non-parametric test such as the Levene test and Wilcoxon rank sum test. For departure delays, the Levene's test p=0.4355 which is not significant meaning that variances are roughly equal between holiday and non holiday groups for departure delays. The Wilcoxon Rank Sum test p-value is \~2.42e-16 which is significant and allows us to conclude that departure delays are significant between holiday and non holiday periods.
+Departure Conclusion: Departure delays has a low p-value for both holiday and non holiday periods which means that the distributions are not normal in either group, this leads us to use a non-parametric test such as the Levene test and Wilcoxon rank sum test. For departure delays, the Levene's test p=0.4355 which is not significant meaning that variances are roughly equal between holiday and non holiday groups for departure delays. The Wilcoxon Rank Sum test p-value is approximately $7.33 \times 10^{-10}$ which is significant and allows us to conclude that departure delays are significant between holiday and non holiday periods.
 
 #Arrival Delays
 
 ```{r}
+
 ggplot(flights_holiday, aes(x=holiday_flag, y=arr_delay, fill= holiday_flag))+
   geom_boxplot(outlier.size = 0.5, alpha=0.7)+
   labs(title= "Arrival Delay Distributions: Holiday Period vs. NonHoliday Flights",
        x="", y="Arrival Delay (minutes)")+
   theme(legend.position = "none")
+
 ```
 
 ```{r}
+
 set.seed(707)
 normality_test<-flights_holiday|> #normality test per group
   group_by(holiday_flag)|>
@@ -1022,23 +1092,27 @@ holiday_test<-wilcox.test(arr_delay~holiday_flag, data=flights_holiday)#Wilcoxon
 print(holiday_test)
 
 cat("Wilcoxon test p-value: ", signif(holiday_test$p.value,4))
+
 ```
 
-##Arrival Conclusion: Arrival delays has a low p-value for both holiday and non holiday periods which means that the distributions are not normal in either group, this leads us to use a non-parametric test such as the Levene test and Wilcoxon rank sum test. For arrival delays, the Levene's test p=0.04781 which indicates that the variance differs significantly between holiday and non holiday groups for arrival delays. The Wilcoxon Rank Sum test p-value is \~7.33e-10 which is significant and allows us to conclude that departure delays are significant between holiday and non holiday periods.
+Arrival Conclusion: Arrival delays has a low p-value for both holiday and non holiday periods which means that the distributions are not normal in either group, this leads us to use a non-parametric test such as the Levene test and Wilcoxon rank sum test. For arrival delays, the Levene's test p=0.04781 which indicates that the variance differs significantly between holiday and non holiday groups for arrival delays. The Wilcoxon Rank Sum test p-value is ~7.33e-10 which is significant and allows us to conclude that departure delays are significant between holiday and non holiday periods.
 
-###Overall Conclusion: We can conclude that Departure and Arrival flight delays occur more frequently or are more severe during major holiday periods, defined as the day before and day of the holiday. The analysis shows that arrival delays increase and exhibit significantly greater variability during holiday times, indicating inconsistent and unpredictable arrival times around major holidays. Although departure delays show similar mean increases during holidays, the variance remains stable suggesting that delays at departure are consistently worse but not erratic. This analysis highlights the operational challenges airlines and airports face during major holidays, emphasizing the need for planning and resource allocations to mitigate such delays during holiday periods.
+Overall Conclusion: We can conclude that Departure and Arrival flight delays occur more frequently or are more severe during major holiday periods, defined as the day before and day of the holiday. The analysis shows that arrival delays increase and exhibit significantly greater variability during holiday times, indicating inconsistent and unpredictable arrival times around major holidays. Although departure delays show similar mean increases during holidays, the variance remains stable suggesting that delays at departure are consistently worse but not erratic. This analysis highlights the operational challenges airlines and airports face during major holidays, emphasizing the need for planning and resource allocations to mitigate such delays during holiday periods.
+
+\newpage
 
 ### Question 4: Does the age of the plane affect flight delays?
 
 Within this main question we will perform hypothesis tests to answer the two following sub-questions:
 
-#### 1. Do older planes experience more delays compared to newer ones? 
+#### 1. Do older planes experience more delays compared to newer ones?
 
 $H_0$: There is no difference in the distribution of arrival delays across the different plane age groups.
 
 $H_1$: At least one plane age group has a different distribution of arrival delays compared to the others.
 
 ```{r}
+
 # Join flights with planes to get plane manufacture year
 planes_fixed <- planes %>%
   rename(plane_year = year)
@@ -1057,9 +1131,11 @@ flights_planes <- flights %>%
   )
 
 head(flights_planes)
+
 ```
 
 ```{r, echo=FALSE}
+
 ggplot(flights_planes, aes(x = age_group, y = arr_delay)) +
   geom_boxplot(fill = "skyblue") +
   labs(
@@ -1067,11 +1143,13 @@ ggplot(flights_planes, aes(x = age_group, y = arr_delay)) +
     x = "Plane Age Group",
     y = "Arrival Delay (minutes)"
   )
+
 ```
 
 The boxplot shows that arrival delays are fairly similar across all plane age groups, with comparable medians and interquartile ranges. While each group has extreme outliers, there is no clear visual trend suggesting that older planes experience more delays than newer ones. We will run a hypothesis test to further our findings.
 
 ```{r}
+
 flights_planes$age_group <- as.factor(flights_planes$age_group)
 
 summary_stats <- flights_planes %>%
@@ -1104,25 +1182,27 @@ dunn.test(flights_planes$arr_delay, flights_planes$age_group, method = "bonferro
 
 ```
 
-The Kruskal-Wallis test revealed a highly significant difference in arrival delays across plane age groups (p \< 2.2e-16), indicating that at least one group’s delay distribution differs from the others. Post-hoc pairwise comparisons using Dunn’s test with Bonferroni correction showed that planes aged 20–29 years experience significantly different delay patterns compared to both the 0–9 and 10–19 year groups (adjusted p-values \< 0.001). Additionally, planes aged 30+ years differ significantly from the 20–29 year group (adjusted p = 0.0002), but do not differ significantly from the younger 0–9 or 10–19 year groups. The difference between the 10–19 and 0–9 year groups was borderline significant (adjusted p = 0.0495). In summary, planes aged 20–29 years tend to have notably different arrival delays compared to most other age groups, highlighting a possible link between this age range and on-time performance issues.
+The Kruskal-Wallis test revealed a highly significant difference in arrival delays across plane age groups (p < 2.2e-16), indicating that at least one group’s delay distribution differs from the others. Post-hoc pairwise comparisons using Dunn’s test with Bonferroni correction showed that planes aged 20–29 years experience significantly different delay patterns compared to both the 0–9 and 10–19 year groups (adjusted p-values < 0.001). Additionally, planes aged 30+ years differ significantly from the 20–29 year group (adjusted p = 0.0002), but do not differ significantly from the younger 0–9 or 10–19 year groups. The difference between the 10–19 and 0–9 year groups was borderline significant (adjusted p = 0.0495). In summary, planes aged 20–29 years tend to have notably different arrival delays compared to most other age groups, highlighting a possible link between this age range and on-time performance issues.
 
-\newpage
 
-#### 2. Are there specific plane models or manufactures associated with better on-time performance? 
+#### 2. Are there specific plane models or manufactures associated with better on-time performance?
 
 $H_0$: There is no difference in the distribution of arrival delays across different plane models or manufacturers.
 
 $H_1$: At least one plane model or manufacturer has a different distribution of arrival delays compared to the others.
 
 ```{r}
+
 flights_manufacturer <- flights %>%
   inner_join(planes, by = "tailnum") %>%
   filter(!is.na(manufacturer), !is.na(arr_delay)) %>%
   group_by(manufacturer) %>%
   filter(n() > 50)
+
 ```
 
 ```{r, echo=FALSE}
+
 ggplot(flights_manufacturer, aes(x = reorder(manufacturer, arr_delay, FUN = median), y = arr_delay, fill = manufacturer)) +
   geom_boxplot(outlier.size = 0.5, alpha = 0.7) +
   coord_flip() +   # horizontal for readability
@@ -1131,9 +1211,11 @@ ggplot(flights_manufacturer, aes(x = reorder(manufacturer, arr_delay, FUN = medi
     x = "Manufacturer",
     y = "Arrival Delay (minutes)"
   )
+
 ```
 
 ```{r}
+
 # filter manufacturers with more than 50 flights
 flights_manufacturer <- flights %>%
   inner_join(planes, by = "tailnum") %>%
@@ -1182,9 +1264,10 @@ if (kruskal_result$p.value < 0.05) {
   cat("Kruskal-Wallis p-value:", signif(kruskal_result$p.value, 4), "\n")
   cat("No significant differences found among manufacturers.\n")
 }
+
 ```
 
-The Kruskal-Wallis test indicates a highly significant difference in arrival delays across plane manufacturers (χ² = 3770.9, df = 21, p \< 2.2e-16). This strongly suggests that not all manufacturers have the same on-time performance. The post-hoc Dunn's test with Bonferroni correction highlights specific pairwise differences. Notably, comparisons involving Embraer show consistently significant differences with Airbus Industrie, Boeing, Bombardier Inc, and McDonnell Douglas, indicating that Embraer aircraft tend to have distinct arrival delay patterns compared to these manufacturers. Additionally, Airbus and McDonnell Douglas pairs also appear among the most significant differences. These results indicate that certain manufacturers, especially Embraer, are associated with notably different arrival delay profiles, reflecting differences in punctuality or operational factors across manufacturers.
+The Kruskal-Wallis test indicates a highly significant difference in arrival delays across plane manufacturers (\χ² = 3770.9, df = 21, p \< 2.2e-16). This strongly suggests that not all manufacturers have the same on-time performance. The post-hoc Dunn's test with Bonferroni correction highlights specific pairwise differences. Notably, comparisons involving Embraer show consistently significant differences with Airbus Industrie, Boeing, Bombardier Inc, and McDonnell Douglas, indicating that Embraer aircraft tend to have distinct arrival delay patterns compared to these manufacturers. Additionally, Airbus and McDonnell Douglas pairs also appear among the most significant differences. These results indicate that certain manufacturers, especially Embraer, are associated with notably different arrival delay profiles, reflecting differences in punctuality or operational factors across manufacturers.
 
 \newpage
 
