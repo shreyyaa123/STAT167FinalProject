@@ -1,6 +1,9 @@
 ---
 title: "Final Project STAT167"
-author: "Group: Statistically Speaking — Shreya Mohan, Kalyani Mantirraju, Crystal Arevalo, Karen Alvarez, Mason Lam"
+author: |
+  Group: Statistically Speaking  
+  Shreya Mohan, Kalyani Mantirraju, Crystal Arevalo,  
+  Karen Alvarez, Mason Lam
 date: "06/02/2025"
 output:
   pdf_document:
@@ -27,13 +30,12 @@ library(tidyverse)
 library(car)
 library(dunn.test)
 library(gridExtra)
-library(dplyr)
-library(ggplot2)
 library(tidyr)
 library(broom)
 library(multcomp)
 library(nortest)
 library(boot)
+library(knitr)
 
 ```
 
@@ -1245,7 +1247,16 @@ kruskal_result <- kruskal.test(arr_delay ~ manufacturer, data = flights_manufact
 print(kruskal_result)
 
 if (kruskal_result$p.value < 0.05) {
-  dunn_result <- dunn.test(flights_manufacturer$arr_delay, flights_manufacturer$manufacturer, method = "bonferroni")
+  dunn_output <- capture.output(
+    dunn_result <- dunn.test(
+      flights_manufacturer$arr_delay,
+      flights_manufacturer$manufacturer,
+      kw = FALSE,
+      list = TRUE,
+      rmc = FALSE,
+      alpha = 0.05
+    )
+  )
   
   sig_comparisons <- data.frame(
     comparison = dunn_result$comparisons,
@@ -1267,13 +1278,28 @@ if (kruskal_result$p.value < 0.05) {
 
 ```
 
-The Kruskal-Wallis test indicates a highly significant difference in arrival delays across plane manufacturers (\χ² = 3770.9, df = 21, p \< 2.2e-16). This strongly suggests that not all manufacturers have the same on-time performance. The post-hoc Dunn's test with Bonferroni correction highlights specific pairwise differences. Notably, comparisons involving Embraer show consistently significant differences with Airbus Industrie, Boeing, Bombardier Inc, and McDonnell Douglas, indicating that Embraer aircraft tend to have distinct arrival delay patterns compared to these manufacturers. Additionally, Airbus and McDonnell Douglas pairs also appear among the most significant differences. These results indicate that certain manufacturers, especially Embraer, are associated with notably different arrival delay profiles, reflecting differences in punctuality or operational factors across manufacturers.
+The Kruskal-Wallis test indicates a highly significant difference in arrival delays across plane manufacturers ($\chi^2$
+ = 3770.9, df = 21, p \< 2.2e-16). This strongly suggests that not all manufacturers have the same on-time performance. The post-hoc Dunn's test with Bonferroni correction highlights specific pairwise differences. Notably, comparisons involving Embraer show consistently significant differences with Airbus Industrie, Boeing, Bombardier Inc, and McDonnell Douglas, indicating that Embraer aircraft tend to have distinct arrival delay patterns compared to these manufacturers. Additionally, Airbus and McDonnell Douglas pairs also appear among the most significant differences. These results indicate that certain manufacturers, especially Embraer, are associated with notably different arrival delay profiles, reflecting differences in punctuality or operational factors across manufacturers.
 
 \newpage
 
 # Conclusion
 
 # Member Contributions
+```{r, warning=FALSE, echo=FALSE}
+member_contributions <- data.frame(
+  Member = c("Shreya", "Kalyani", "Karen", "Crystal", "Mason"),
+  Contribution = c(
+    "Planes Dataset EDA & Analysis Question #4",
+    "Weather Dataset EDA & Analysis Question #2",
+    "Flights Dataset EDA & Analysis Question #3",
+    "Airports Dataset EDA & Analysis Question #5",
+    "Analysis Question #1"
+  )
+)
+
+kable(member_contributions, caption = "Team Member Contributions")
+```
 
 # Alternative Strategies & Back Up Plan:
 
