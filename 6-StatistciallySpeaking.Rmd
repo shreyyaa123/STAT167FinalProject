@@ -723,7 +723,6 @@ flights_weather %>%
 ```
 
 Extreme weather cases make up the majority of severely delayed flights. However, the difference between extreme weather cases and the non extreme weather cases is not overwhelming which further suggests the idea that weather only impacts arrival delays up to a certain point, and that other factors unrelated to weather explain a large chunk of the variance.
-=======
 
 ### Question 2: How do differences between airlines influence flight delays?
 
