@@ -26,16 +26,12 @@ library(tidyverse)
 library(car)
 library(dunn.test)
 library(gridExtra)
-library(nycflights13)
 library(dplyr)
 library(ggplot2)
 library(tidyr)
 library(broom)
-library(car) 
 library(multcomp)
 library(nortest)
-library(rstatix)
-library(dplyr)
 library(boot)
 ```
 
@@ -382,7 +378,8 @@ carrier_Dest<-not_canceled |>
 
 ## Weather Dataset EDA
 
-```{r, echo=FALSE}
+```{r, echo = FALSE}
+
 cat("\nMissing values per column:\n")
 print(colSums(is.na(weather)))
 
@@ -396,16 +393,14 @@ cat("\nSummary statistics:\n")
 print(summary(weather))
 ```
 
-```{r}
-# Related Questions from our Proposal:
-# --- How do weather conditions affect flight delays? 
-# --- How do environmental factors like humidity, visibility, and wind affect flight delays? 
-# --- What impact does precipitation have on specific airports and weather-related delays? 
+Related Questions from our Proposal:
+1) How do weather conditions affect flight delays? 
+2) How do environmental factors like humidity, visibility, and wind affect flight delays? 
+3) What impact does precipitation have on specific airports and weather-related delays? 
 
+```{r}
 
 # Average Temperature by Month
-# --- We can see that the average temperature ranges from about 70-80º in the summer, and 35-40º in the winter. 
-# --- When answering our research questions, we can see if there is a correlation between summer/winter weather and flight delays.
 
 monthlyavgtemp <- weather %>%
   group_by(month) %>%
@@ -418,12 +413,14 @@ ggplot(data = monthlyavgtemp,
        x = "Month",
        y = "Average Temperature (Fº)") +
   theme_minimal()
-  
+
+```
+
+We can see that the average temperature ranges from about 70-80º in the summer, and 35-40º in the winter. When answering our research questions, we can see if there is a correlation between summer/winter weather and flight delays.
+
+```{r}
 
 # Average Visibility by Month
-# --- The average visibility does not greatly vary by month looking at the average value. However, we can see that there is slightly less visiblity in winter months.
-# --- Looking at the boxplots, we can see that there are a lot of outliers. Removing these outliers and focusing on visib < 10 shows us a better distribution of visiblity.
-# --- When answering our research questions, we can compare the average visibility during flight delays vs average visibility without flight       delays to further explore the role of visibility in flight delays. 
 
 monthlyavgvisib <- weather %>%
   group_by(month) %>%
@@ -453,10 +450,13 @@ ggplot(filter(weather, visib < 10), aes(x = factor(month), y = visib)) +
   coord_flip() +
   theme_minimal()
 
+```
+
+The average visibility does not greatly vary by month looking at the average value. However, we can see that there is slightly less visiblity in winter months. Looking at the boxplots, we can see that there are a lot of outliers. Removing these outliers and focusing on visib < 10 shows us a better distribution of visiblity. When answering our research questions, we can compare the average visibility during flight delays vs average visibility without flight delays to further explore the role of visibility in flight delays. 
+
+```{r, warning = FALSE}
 
 # Distribution of Humidity by Month
-# --- The distribution of humidity varies by month, but there does not seem to be significant differences.
-# --- We can further explore the role of humidity by comparing it to other weather variables and flight delays.
 
 ggplot(weather, aes(x = factor(month), y = humid)) +
   geom_boxplot(fill = "darkseagreen2", color = "darkgreen") +
@@ -466,10 +466,13 @@ ggplot(weather, aes(x = factor(month), y = humid)) +
   coord_flip() +
   theme_minimal()
 
+```
+
+The distribution of humidity varies by month, but there does not seem to be significant differences. We can further explore the role of humidity by comparing it to other weather variables and flight delays.
+
+```{r}
 
 # Precipitation by Month
-# --- The average precipitation for each month varies greatly. We can see that spring months have the greatest average precipitation.
-# --- When answering our research question, we can see if greater precipitation correlates to flight delays. 
 
 monthlyprecip <- weather %>%
   group_by(month) %>%
@@ -484,15 +487,21 @@ ggplot(monthlyprecip, aes(x = month, y = avgmonthlyprecip)) +
   scale_x_continuous(breaks = 1:12) +
   theme_minimal()
 
+```
+
+The average precipitation for each month varies greatly. We can see that spring months have the greatest average precipitation. When answering our research question, we can see if greater precipitation correlates to flight delays. 
+
+```{r}
 
 # Correlation Between Variables
-# --- We can explore the correlation between different weather variables and see how they may work together to impact flight delays.
 
 cor(weather$precip, weather$visib, use = "complete.obs")
 cor(weather$humid, weather$visib, use = "complete.obs")
 
-
 ```
+
+We can explore the correlation between different weather variables and see how they may work together to impact flight delays.
+
 
 \newpage
 
@@ -725,11 +734,13 @@ To answer this question, we can explore factors such as airlines, engines,
 
 #### 1. Do some airlines have more delays than others?
 
-$H_0$: All airlines have the same average delay. $H_A$: All airlines do not have the same average delay.
+$H_0$: All airlines have the same average delay. 
+
+$H_A$: All airlines do not have the same average delay.
 
 We can test this by comparing the means of the different airlines.
 
-```{r}
+```{r, warning = FALSE}
 
 flights_not_missing = flights %>%
   filter(!is.na(arr_delay))
@@ -777,11 +788,13 @@ The results from the Games-Howell test show us that there is a stark difference 
 
 #### 2: Does arrival delay vary between different engine types?
 
-$H_0$: Arrival delay does not vary between different engine types. $H_A$: Arrival delay does vary between different engine types.
+$H_0$: Arrival delay does not vary between different engine types. 
+
+$H_A$: Arrival delay does vary between different engine types.
 
 We can use ANOVA to compare different engine types. However, we first need to test the assumptions.
 
-```{r}
+```{r, warning = FALSE}
 
 flights_engines = flights %>%
   filter(!is.na(arr_delay)) %>% 
@@ -834,7 +847,9 @@ It looks like all the airlines mostly use Turbo-fan engines, which means we don'
 
 #### 3: Does cancellation rate vary across airlines?
 
-$H_0$: Cancellation rate is the same across all airlines. $H_A$: Cancellation rate differs between at least some airlines.
+$H_0$: Cancellation rate is the same across all airlines. 
+
+$H_A$: Cancellation rate differs between at least some airlines.
 
 We can use a chi-squared test to check our hypotheses.
 
@@ -856,7 +871,9 @@ Since the p-value is low, we can say that there is evidence that cancellation ra
 
 #### 4: Does speed vary across airlines?
 
-$H_0$: Mean speed is the same across all airlines. $H_A$: At least one airline has a different mean speed from the others.
+$H_0$: Mean speed is the same across all airlines. 
+
+$H_A$: At least one airline has a different mean speed from the others.
 
 We can test this using ANOVA, first checking assumptions of normality and equal variances.
 
