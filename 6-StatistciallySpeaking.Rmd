@@ -516,6 +516,7 @@ Temperature by month and departure delays
 library(tidyverse)
 library(ggplot2)
 
+#mutate to month 
 f_w_by_month <- flights_weather |>
   mutate(month = factor(month, levels = 1:12, labels = month.name))
 
@@ -607,10 +608,12 @@ Both variables rise and fall together for Temperature vs. Average Delay and Humi
 Linear Regression Model
 
 ```{r}
+#omit missing values
 model_data <- flights_weather |>
   select(arr_delay, precip, temp, humid, visib, carrier, origin, month, hour) |>
   filter(!is.na(arr_delay), !is.na(precip), !is.na(temp), !is.na(humid), !is.na(visib), !is.na(carrier), !is.na(origin), !is.na(month), !is.na(humid))
 
+#linear regression model
 lm_model <- lm(arr_delay ~ precip + temp + humid + visib + carrier + origin + month + hour, data = model_data)
 summary(lm_model)
 ```
@@ -639,7 +642,6 @@ set.seed(167)
 cv_results <- cv.glm(data = model_data, glmfit = lm_model2, K = 10)
 
 cv_results$delta 
-cv_results
 ```
 
 Linear model has a Root Mean Square Error of \~ 44 minutes, predictions are about 44 minutes off from the actual arrival delays.
@@ -673,18 +675,21 @@ The noticeable upward slope indicates a positive linear relationship for precipi
 library(dplyr)
 flights_weather <- mutate(flights_weather, severe_delay = arr_delay > 60)
 
+#create extreme weather vars and conditions
 flights_weather <- flights_weather |>
   mutate(
     extreme_precip = precip > 0.5,
     low_visib = visib < 1,
     high_wind = wind_speed > 20,
     cold_temp = temp < 32,
-    high_temp = temp > 90
+    high_temp = temp > 90,
+    extreme_weather = extreme_precip | low_visib | high_wind | cold_temp | high_temp
   )
 
 ```
 
 ```{r}
+#use glm for logistic regression
 lm_severe <- glm(severe_delay ~ extreme_precip + low_visib + high_wind + cold_temp + high_temp, data = flights_weather, family = "binomial")
 summary(lm_severe)
 ```
@@ -694,6 +699,7 @@ Flights in heavy rain are 4.66 times more likely to be severely delayed compared
 ```{r}
 library(ggplot2)
 
+#proportion chart of severity of weather and delay
 flights_weather %>%
   ggplot(aes(x = extreme_weather, fill = severe_delay)) +
   geom_bar(position = "fill") +
