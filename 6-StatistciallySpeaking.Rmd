@@ -23,6 +23,7 @@ editor_options:
 # install.packages("nortest")
 # install.packages("rstatix")
 # install.packages("mgcv")
+#install.packages("gridExtra")
 library(mgcv)
 library(rstatix)
 library(nycflights13)
@@ -36,7 +37,7 @@ library(multcomp)
 library(nortest)
 library(boot)
 library(knitr)
-
+library(gridExtra)
 ```
 
 # Project Description:
@@ -54,6 +55,8 @@ Understanding factors that contribute to flight delays is critical for informing
 3.  Are delays more frequent during major holidays?
 4.  Does the age of the plane affect flight delays?
 5.  How do environmental factors like humidity, visibility, and wind affect flight delays?
+
+[View our GitHub Repository](https://github.com/shreyyaa123/STAT167FinalProject/tree/main)
 
 # Datasets
 
@@ -81,15 +84,6 @@ Understanding factors that contribute to flight delays is critical for informing
     -   name : full name of the airlines
 
 ## 3. Airports dataset: Airport names and locations
-
-```{r}
-
-head(airports)
-names(airports)
-str(airports)
-glimpse(airports)
-
-```
 
 ### Variables:
 
@@ -141,13 +135,9 @@ print(glimpse(planes))
 
 cat("\nFirst few rows:\n")
 print(head(planes))
-
-cat("\nSummary statistics:\n")
-print(summary(planes))
-
 ```
 
-```{r, echo=FALSE}
+```{r, fig.width=5, fig.height=3}
 
 planes %>%
   count(manufacturer, sort = TRUE) %>%
@@ -161,7 +151,7 @@ planes %>%
 
 The visualization above shows the top 10 plane manufacturers present in the data-set. Boeing has the largest amount of planes with approximately 1750 planes, and Airbus has the second most with approximately 400 planes.
 
-```{r, echo = FALSE, warning = FALSE}
+```{r, warning = FALSE, fig.width=5, fig.height=3}
 
 ggplot(planes, aes(x = year)) +
   geom_histogram(binwidth = 1, fill = "midnightblue", color = "white") +
@@ -186,22 +176,16 @@ print(glimpse(airlines))
 cat("\nFirst few rows:\n")
 print(head(airlines))
 
-cat("\nSummary statistics:\n")
-print(summary(airlines))
-
 ```
 
 Viewing all the Unique Airlines:
 
 ```{r}
-
 airlines %>%
   arrange(name)
-
 ```
 
-```{r}
-
+```{r, fig.width=5, fig.height=3}
 # Join flights and airline names
 flights_airlines <- flights %>%
   left_join(airlines, by = "carrier")
@@ -229,7 +213,7 @@ ggplot(avg_delays, aes(x = reorder(name, avg_dep_delay), y = avg_dep_delay)) +
 
 We can see that on average, Frontier Airlines has the most departure delay at around 20 min, with ExpressJet roughly around the same 20 minutes. Less than half the Airlines seem to be past the 13 minute delay mark.
 
-```{r}
+```{r, fig.width=5, fig.height=3}
 
 cancel_rate <- flights_airlines %>%
   mutate(cancelled = is.na(dep_delay)) %>%
@@ -252,7 +236,6 @@ As we can see from above, Skywest Airlines Inc has the highest cancellation rate
 ## Flights Dataset EDA:
 
 ```{r, echo=FALSE}
-
 cat("\nMissing values per column:\n")
 print(colSums(is.na(flights)))
 
@@ -261,10 +244,6 @@ print(glimpse(flights))
 
 cat("\nFirst few rows:\n")
 print(head(flights))
-
-cat("\nSummary statistics:\n")
-print(summary(flights))
-
 ```
 
 Most of our analysis is based on how other variables and datasets affect and compare to the flights dataset. We are seeing how the arrival time, departure delay time, departure time, arrival delay time, and other variables are affected.
@@ -272,17 +251,14 @@ Most of our analysis is based on how other variables and datasets affect and com
 flights that were not canceled - We will be using these the not_canceled data for the rest of the EDA
 
 ```{r}
-
 not_canceled <- filter(flights, !is.na(dep_delay), !is.na(arr_delay))
 not_canceled
-
 ```
 
 Basic delay analysis
 Distribution and Proportion of delayed flights that were not canceled
 
 ```{r}
-
 #histograms
 hist(not_canceled$dep_delay, breaks=100, main = "Departure Delays",xlab = "Minutes")
 hist(not_canceled$arr_delay, breaks=100, main ="Arrival Delays", xlab = "Minutes")
@@ -290,14 +266,12 @@ hist(not_canceled$arr_delay, breaks=100, main ="Arrival Delays", xlab = "Minutes
 #proportions
 mean(not_canceled$dep_delay>0, na.rm=TRUE)
 mean(not_canceled$arr_delay>0, na.rm=TRUE)
-
 ```
 
 Most of the departure delays do not go over 200 minutes and the arrival delays have very few delays past 200 minutes.
 
-#### Delay patterns
 
-```{r}
+```{r, fig.width=5, fig.height=3}
 
 #convert time to hours
 not_canceled$dep_hour <-floor(not_canceled$sched_dep_time/100)
@@ -311,12 +285,10 @@ not_canceled |>
   geom_line()+
   geom_point()+
   labs(title = "Average Departure Delay by Hour", x="Scheduled Departure", y="Minutes")
-
 ```
 
 We can see that many of the delays happen further in the day and peak at about 18 hours and then it descends from there.
 
-#### Delays by Airport
 
 ```{r}
 
@@ -328,7 +300,6 @@ not_canceled |>
 
 EWR has the highest average departure and arrival delay followed by JFK and then LGA
 
-##### Ranking airlines by delay
 
 ```{r}
 
@@ -343,7 +314,7 @@ F9 has the highest average departure delay at 20 hours.
 
 Check to see if the flights that were delayed made up the time in the air
 
-```{r}
+```{r, fig.width=5, fig.height=3}
 not_canceled|>
   mutate(made_up_time = dep_delay- arr_delay)|>
   ggplot(aes(x=made_up_time))+
@@ -354,25 +325,22 @@ not_canceled|>
 
 We can see that the majority of the flights did not save any minutes on the arrival delay and actually ended up being delayed more. Some flights did in fact save minutes but it was less than 50% of all flights.
 
-##### Delays by Month
 
-```{r}
-
-not_canceled|>
-  group_by(month)|>
-  summarize(mean_dep_delay=mean(dep_delay, na.rm=TRUE))|>
-  ggplot(aes(x=month, y=mean_dep_delay))+
-  geom_line()+
-  geom_point()+
-  labs(title = "Monthly Departure Delays", x="Month", y="Time (minutes)")
-
+```{r monthly_dep_delay_plot, fig.width=5, fig.height=3}
+not_canceled |>
+  group_by(month) |>
+  summarize(mean_dep_delay = mean(dep_delay, na.rm = TRUE)) |>
+  ggplot(aes(x = month, y = mean_dep_delay)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Monthly Departure Delays", x = "Month", y = "Time (minutes)")
 ```
 
 we see that the majority of flights are delayed from May to mid July, and there is another peak at December. The months with the shorest delays are September and October.
 
 ##### Does distance affect the amount of delays?
 
-```{r}
+```{r, fig.width=5, fig.height=3}
 
 ggplot(not_canceled, aes(x=distance, y=dep_delay))+
   geom_point(alpha=0.2)+
@@ -396,19 +364,17 @@ longest_Distance
 
 We see that HA is the carrier with the longest flights and they all start at JFK airport and land at HNL.
 
-##### arrival delays per carrier
 
-```{r}
-
-carrier_Dest<-not_canceled |>
+```{r avg_arr_delay_plot, fig.width=8, fig.height=5}
+carrier_Dest <- not_canceled |>
   group_by(carrier, dest) |>
-  summarize(avg_arr_Delay = mean(arr_delay, na.rm= TRUE), .group= "drop")
-  ggplot(carrier_Dest, aes(x = reorder(carrier, avg_arr_Delay, median), y= avg_arr_Delay))+
-  geom_boxplot()+
-  coord_flip()+
-  labs(title = "Average Arrival Delay by Carrier",x = "Carrier", y= "Average Arrival Delay (minutes)")+
+  summarize(avg_arr_Delay = mean(arr_delay, na.rm = TRUE), .groups = "drop")
+
+ggplot(carrier_Dest, aes(x = reorder(carrier, avg_arr_Delay, median), y = avg_arr_Delay)) +
+  geom_boxplot() +
+  coord_flip() +
+  labs(title = "Average Arrival Delay by Carrier", x = "Carrier", y = "Average Arrival Delay (minutes)") +
   theme_minimal()
-  
 ```
 
 ## Weather Dataset EDA
@@ -423,10 +389,6 @@ print(glimpse(weather))
 
 cat("\nFirst few rows:\n")
 print(head(weather))
-
-cat("\nSummary statistics:\n")
-print(summary(weather))
-
 ```
 
 Related Questions from our Proposal:
@@ -434,7 +396,7 @@ Related Questions from our Proposal:
 2) How do environmental factors like humidity, visibility, and wind affect flight delays? 
 3) What impact does precipitation have on specific airports and weather-related delays? 
 
-```{r}
+```{r, fig.width=5, fig.height=3}
 
 # Average Temperature by Month
 
@@ -449,12 +411,11 @@ ggplot(data = monthlyavgtemp,
        x = "Month",
        y = "Average Temperature (Fº)") +
   theme_minimal()
-
 ```
 
 We can see that the average temperature ranges from about 70-80º in the summer, and 35-40º in the winter. When answering our research questions, we can see if there is a correlation between summer/winter weather and flight delays.
 
-```{r}
+```{r, fig.width=5, fig.height=3}
 
 # Average Visibility by Month
 
@@ -490,7 +451,7 @@ ggplot(filter(weather, visib < 10), aes(x = factor(month), y = visib)) +
 
 The average visibility does not greatly vary by month looking at the average value. However, we can see that there is slightly less visiblity in winter months. Looking at the boxplots, we can see that there are a lot of outliers. Removing these outliers and focusing on visib < 10 shows us a better distribution of visiblity. When answering our research questions, we can compare the average visibility during flight delays vs average visibility without flight delays to further explore the role of visibility in flight delays. 
 
-```{r, warning = FALSE}
+```{r, warning = FALSE, fig.width=5, fig.height=3}
 
 # Distribution of Humidity by Month
 
@@ -506,7 +467,7 @@ ggplot(weather, aes(x = factor(month), y = humid)) +
 
 The distribution of humidity varies by month, but there does not seem to be significant differences. We can further explore the role of humidity by comparing it to other weather variables and flight delays.
 
-```{r}
+```{r, fig.width=5, fig.height=3}
 
 # Precipitation by Month
 
@@ -538,6 +499,84 @@ cor(weather$humid, weather$visib, use = "complete.obs")
 
 We can explore the correlation between different weather variables and see how they may work together to impact flight delays.
 
+## Airport Dataset EDA
+
+```{r}
+cat("\nMissing values per column:\n")
+print(colSums(is.na(airports)))
+
+cat("\nColumn types and structure:\n")
+print(glimpse(airports))
+
+cat("\nFirst few rows:\n")
+print(head(airports))
+```
+
+```{r, warning=FALSE, fig.width=5, fig.height=3}
+# Looking at the variation of flight delays between airports
+
+flights_mod <- flights |>
+  mutate(month = factor(month, levels = 1:12, labels = month.abb))
+
+delays_airport <- flights_mod |>
+  group_by(origin) |>
+  summarise(mean_delay = mean(dep_delay, na.rm = TRUE),
+            median_delay = median(dep_delay, na.rm = TRUE),
+            sd_delay = sd(dep_delay, na.rm = TRUE))
+airport_avg_delay <- ggplot(delays_airport, aes(x = origin, y = mean_delay, fill = origin)) +
+  geom_bar(stat = "identity", show.legend = FALSE) +
+  labs(title = "Average Flight Delays by Airport", x = "Airport", y = "Average Delay (minutes)")
+
+# Looking at variation of cancelled flights by airports over a period of 12 months 
+
+cancelled_flights <- flights_mod |>
+  filter(!is.na(month)) |>
+  group_by(origin, month) |>
+  summarise(cancelled = sum(is.na(dep_time)))
+
+airport_cancelled_month <- ggplot(cancelled_flights, aes(x = month, y = cancelled, fill = origin)) +
+  geom_bar(stat = "identity", position = "dodge", show.legend = FALSE) +
+  facet_wrap(~origin) +
+  coord_flip() +
+  labs(title = "Cancelled flights by Airport and by Month", x = "Month", y = "Number of Cancelled Flights")
+
+# Looking at the flight patterns for each airport over a period of 12 months 
+flight_patterns <- flights_mod |>
+  group_by(origin, month) |>
+  summarise(avg_flights = n() / length(unique(day)), .groups = "drop")
+
+airport_avg_flight_month <- ggplot(flight_patterns, aes(x = month, y = avg_flights, color = origin, group = origin)) +
+  geom_line() +
+  labs(title = "Average Flight Patterns from Airport by Month", x = "Month", y = "Average Number of Flights")
+
+# Looking at carriers departing from airports over a period of 12 months 
+flights_with_airlines <- flights_mod |>
+  left_join(airlines, by = "carrier")
+
+carrier_variation <- flights_with_airlines |>
+  group_by(origin, name, month)
+
+airport_carriers_month <- ggplot(carrier_variation, aes(x = name, y = month, fill = name)) +
+  geom_bar(stat = "identity", position = "dodge", show.legend = FALSE) + 
+  facet_wrap(~origin) +
+  coord_flip() +
+  labs(title = "Variation of Carriers Departing from Airports", x = "Carrier", y = "Number of Flights")
+
+# Plots
+  airport_avg_delay
+  airport_cancelled_month
+  airport_avg_flight_month
+  airport_carriers_month
+```
+
+#### Summary: 
+1: When looking at the Average Flight Delays we can see that Newark Liberty Airport (EWR) has the highest flight delays averaging at 15 minutes, followed by John F. Kennedy Airport (JFK) and LaGuardia Airport (LGA). Based on this information, further investigation into potential causes like weather and airline operations could provide more information concerning the delays at EWR. 
+
+2. When looking at cancelled flights by airport and month, distinct patterns emerge for EWR, JFK, and LGA. EWR experiences a higher frequency of cancellations throughout the year, with notable peaks in February, March, and December. This may be attributed to winter weather and holiday congestion. JFK generally has fewer cancellations, expect for a significant spike in February, this may also be weather-related as this pattern is seen in EWR. LGA shows variability in cancellations, with higher instances during the summer months and December, possibly influenced by seasonal weather and holiday travel. These patterns suggest that weather conditions and holiday would be worth investigating to better understand their effects on flight delays. 
+
+3. The line plot illustrating average flight patterns by month reveals distinct seasonal trends for each airport. EWR exhibits a significant peak in April, averaging 350 flights, followed by a gradual decrease for the remainder of the year. JFK displays more fluctuation throughout the year, with its highest average number of flights, just under 325, occurring during the summer months, followed by a decrease and a slight uptick during the holiday season. LGA, while experiencing the lowest overall flight numbers, shows a gradual incrase with a peak in October, followed by a decline. These patterns may suggest that EWR and JFK, as international airports, are more influenced by seasonal travel trends, whereas LGA, with its domestic focus, shows a more consistent traffic flow.
+
+4. The bar chart shows the distribution of flights by carrier for each airport. EWR and JFK have a variety of carriers, while LGA shows a more concentrated distribution with fewer carriers. The variety of carriers at EWR and JFK may contribute to increased operational complexity and may potentially lead to higher delays. While LGA's more concentrated carriers might allow for efficient operations, however this isn't the case as LGA experienced a higher number of cancelled flights. This would be interesting to investigate is it implies that factors other than weather, such as operational or logistical challenges, could be influencing flight delays and cancellations. 
 
 \newpage
 
@@ -1285,21 +1324,38 @@ The Kruskal-Wallis test indicates a highly significant difference in arrival del
 
 # Conclusion
 
-# Member Contributions
-```{r, warning=FALSE, echo=FALSE}
-member_contributions <- data.frame(
-  Member = c("Shreya", "Kalyani", "Karen", "Crystal", "Mason"),
-  Contribution = c(
-    "Planes Dataset EDA & Analysis Question #4",
-    "Weather Dataset EDA & Analysis Question #2",
-    "Flights Dataset EDA & Analysis Question #3",
-    "Airports Dataset EDA & Analysis Question #5",
-    "Analysis Question #1"
-  )
-)
+#### Overall Summary of Findings
 
-kable(member_contributions, caption = "Team Member Contributions")
-```
+- **RQ1:** Weather conditions, especially heavy precipitation and extreme weather events, significantly contribute to flight delays.
+- **RQ2:** Flight delays differ significantly between airlines, influenced by factors like cancellation rates and operational speed.
+- **RQ3:** Delays increase and become more variable during major holiday periods, impacting both departures and arrivals.
+- **RQ4:** The age and manufacturer of aircraft play a significant role, with older planes and certain manufacturers experiencing more delays.
+- **RQ5:** Environmental factors such as humidity, visibility, and wind direction also affect delays, though their impact varies across different airports.
+
+#### Discussion
+
+Flight delays are influenced by multiple interrelated factors including weather, aircraft characteristics, holidays, and airport-specific conditions. This analysis provides valuable insights that can help stakeholders identify key areas for improving on-time performance and reduce delays at airports.
+
+#### Limitations
+
+- Prediction accuracy is limited by the lack of detailed air traffic control data and potential confounding variables.
+- The weather dataset does not include extreme weather event details like thunderstorms or snowstorms.
+- The analysis relies on 2013 data, which may not fully capture longer-term trends or recent changes.
+
+#### Looking Ahead
+
+- Future work should incorporate additional data such as aircraft maintenance records and air traffic control metrics, including employee retention and turnover rates.
+- Developing strategies to mitigate delays during extreme weather and peak holiday seasons will help minimize disruptions.
+- Infrastructure improvements at airports should be advocated to support smoother operations.
+- Further investigation into human factors, such as pilot decision-making and employee well-being, could shed light on additional causes of delays.
+
+# Team Member Contributions
+
+- **Shreya**: Planes Dataset EDA & Analysis Question #4  
+- **Kalyani**: Weather Dataset EDA & Analysis Question #2  
+- **Karen**: Flights Dataset EDA & Analysis Question #3  
+- **Crystal**: Airports Dataset EDA & Analysis Question #5  
+- **Mason**: Analysis Question #1
 
 # Alternative Strategies & Back Up Plan:
 
