@@ -1,5 +1,5 @@
 # STAT167 Final Project
-By: Shreya Mohan, Kalyani Mantirraju, Karen Alvarez, Crystal Arevalo, Mason Lam, Eric Yang
+By: Shreya Mohan, Kalyani Mantirraju, Karen Alvarez, Crystal Arevalo, Mason Lam
 
 ## Project Motivation:
 Understanding factors that contribute to flight delays is critical for informing Federal Aviation Administration (FAA) policies and guiding airlines and airports in improving operational efficiency, enhancing weather preparedness, and reducing delays through controllable factors. By analyzing weather conditions, airline differences, holiday effects, fleet age, and airport specific challenges, this research can provide data-driven insights to optimize air travel and ensure compliance with aviation regulations in heavily congested areas like New York City. 
@@ -29,9 +29,6 @@ flights, planes, airlines, airports and weather datasets
 
 5. **How do environmental factors like humidity, visibility, and wind affect flight delays?**  
    a. Are these effects observed across all airports?
-
-6. **What impact does precipitation have on specific airports and weather-related delays?**  
-   a. Do airports in regions with higher average precipitation experience more delays?
 
 
 
