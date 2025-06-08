@@ -1,15 +1,15 @@
 ---
 title: "Final Project STAT167"
 author: |
-  Group: Statistically Speaking  
   Shreya Mohan, Kalyani Mantirraju, Crystal Arevalo,  
   Karen Alvarez, Mason Lam
+  Group: Statistically Speaking  
 date: "06/02/2025"
 output:
-  pdf_document:
-    latex_engine: xelatex
   html_document:
     df_print: paged
+  pdf_document:
+    latex_engine: xelatex
 editor_options:
   chunk_output_type: inline
 ---
@@ -17,13 +17,13 @@ editor_options:
 ## Libraries
 
 ```{r, results = 'hide', message=FALSE}
-
-# install.packages("dunn.test")
-# install.packages("multcomp")
-# install.packages("nortest")
-# install.packages("rstatix")
-# install.packages("mgcv")
-#install.packages("gridExtra")
+#  install.packages("MASS")
+#  install.packages("dunn.test")
+#  install.packages("multcomp")
+#  install.packages("nortest")
+#  install.packages("rstatix")
+#  install.packages("mgcv")
+#  install.packages("gridExtra")
 library(mgcv)
 library(rstatix)
 library(nycflights13)
@@ -1382,7 +1382,7 @@ delay_JFK <- flights_weather |>
 
 #### 1a. Correlation Analysis
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, fig.width=5, fig.height=3}
 correlation_matrix <- cor(flights_weather[, c("dep_delay", "humid", "visib", "wind_gust", "wind_speed","wind_dir", "air_density")], use = "complete.obs")
 print(correlation_matrix)
 ggcorrplot(correlation_matrix, hc.order = TRUE, type = "lower")
@@ -1453,14 +1453,12 @@ summary(lm.jfk.01)
 # R^2 if closer to 1 a good fit is suggested
 # Lower RSE suggests a good fit 
 # provide residual plots 
-par(mfrow = c(2,2))
+par(mfrow = c(3,1))
 plot(lm.ewr.01)
-
-par(mfrow = c(2,2))
 plot(lm.lga.01)
-
-par(mfrow = c(2,2))
 plot(lm.jfk.01)
+
+par(mfrow = c(1,1))
 ```
 
 **Validation Fit**
@@ -1606,7 +1604,7 @@ airport_summary_data <- data.frame(
 airport_summary_data
 ```
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, fig.width=5, fig.height=3}
 # Visuals confidence intervals 
 # NEWAK LIBERTY AIRPORT
 predictions.ewr <- predict(lm.ewr.01, delay_EWR, interval = "prediction")
