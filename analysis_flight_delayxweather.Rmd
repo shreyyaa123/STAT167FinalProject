@@ -1,0 +1,401 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+editor_options: 
+  markdown: 
+    wrap: sentence
+---
+
+RQ: How do environmental factors like humidity, visibility, and wind affect flight delays?
+a.
+Are these effects observed across all airports?
+
+```{r}
+library(nycflights13)
+library(tidyverse)
+library(ggcorrplot)
+library(boot)
+library(MASS)
+library(cowplot)
+library(knitr)
+```
+
+### Question 5. How do environmental factors like humidity, visibility, and wind affect flight delays?
+
+$H_0$: Environmental factors like humidity, visibility, and wind do not affect flight delays across airports.
+
+$H_1$: At least one of the environmental factors like humidity, visibility, and wind affect flight delays.
+
+#### 1. Is there a relationship between the predictors
+
+To address this question, a correlation matrix was utilized to explore the relationship between departure delays and various environmental factors.
+Initially, the dataset was filtered to exclude any missing values related to departure delay and air time.
+Following this, the flight data was merged with a weather dataset subset that included key environmental factors such as humidity, visibility, wind speed, air density, and wind gust.
+
+To prepare for further analysis and cross-validation, the merged dataset, denoted as 'r flights_weather', was grouped by airport origin.
+The airports included in the analysis were Newark Liberty Airport (EWR), LaGuardia Airport (LGA), and John F. Kennedy Airport (JFK).
+A sample of 1,000 observations was randomly selected from each airport group using the 'r sample_n' function.
+This sampling process was conducted to create balanced and manageable traing data sets for modeling and cross-validation procedures.
+
+```{r, echo=FALSE}
+# Data preparation 
+
+flights_mod01 <- flights |>
+  filter(!is.na(dep_delay), !is.na(air_time)) |>
+  mutate(month = as.integer(month))
+
+colSums(is.na(flights_mod01))
+str(flights_mod01)
+
+# create subset data
+weather_data <- weather
+## Weather Predictors: visibility, humidity, wind(dir,speed,gust), pressure
+weather_subset <- weather_data |>
+  mutate(air_density = pressure / (287.05 * (temp + 273.15)))
+
+## Will be used for analysis
+flights_weather <- flights_mod01 |>
+  left_join(weather_subset, by = c("origin", "year", "month", "day", "hour"))
+
+# 
+delay_EWR <- flights_weather |>
+  filter(origin == "EWR" & dep_delay > 0) |>
+  na.omit(flights_weather) |>
+  sample_n(1000)
+  
+delay_LGA <- flights_weather |>
+  filter(origin == "LGA" & dep_delay > 0) |>
+  na.omit(flights_weather) |>
+  sample_n(1000)
+
+delay_JFK <- flights_weather |>
+  filter(origin == "JFK" & dep_delay > 0) |>
+  na.omit(flights_weather) |>
+  sample_n(1000)
+```
+
+#### 1a. Correlation Analysis
+
+```{r, echo=FALSE}
+correlation_matrix <- cor(flights_weather[, c("dep_delay", "humid", "visib", "wind_gust", "wind_speed","wind_dir", "air_density")], use = "complete.obs")
+print(correlation_matrix)
+ggcorrplot(correlation_matrix, hc.order = TRUE, type = "lower")
+```
+
+The correlation matrix examined correlation between departure delays and environmental factors.
+The results show environmental factors like humidity, air density, visibility, and wind direction have weak to moderate correlation with flight delays.
+However, wind speed and wind gust show no correlation, thus these variables omitted from the models providing us with following equation to build our models: 
+$\text{dep delay} = \beta_0 + \beta_1 \cdot \text{humidity} + \beta_2 \cdot \text{visibility} + \beta_3 \cdot \text{wind gust} + \beta_4 \cdot \text{wind speed} + \beta_5 \cdot \text{wind direction} + \beta_6 \cdot \text{air density} + \epsilon$.
+
+#### 2. Linear Regression Models
+
+Three linear models were built, and forward selection was employed for model selection, providing the predictive departure delay for for each airport model:
+
+The model for Newark Liberty Airport ('lm.ewr.01') is given by: $\hat{y}_{\text{EWRdep delay}} = \hat{\beta}_0 + \hat{\beta}_1 \cdot\text{humid}$.
+
+The model for LaGuardia Airport ('lm.lga.01') is given by: $\hat{y}_{\text{LGAdep delay}} = \hat{\beta}_0 + \hat{\beta}_1 \cdot\text{humid} + \hat{\beta}_2 \cdot\text{wind dir}$.
+
+The model for John F. Kennedy Airport ('lm.jfk') is given by: $\hat{y}_{\text{JFKdep delay}} = \hat{\beta}_0 + \hat{\beta}_1 \cdot\text{visib} + \hat{\beta}_2 \cdot\text{wind dir}$.
+
+**Model Fit**: Following the building of our models, residual plots were used to evaluate model fit of the models and identify issues.
+For the Residuals vs. Fitted Plots, slight curvatures are detected, suggesting some non-linearity in the relationship between the predictors and response variable.
+This indicates that the linear models may not fully capture underlying patterns in the data.
+For Normal Q-Q Plots, the residuals deviate from the line at the tails, highlighting some deviation from normality, this could suggest the presence of outliers or a skewed distribution of residuals.
+For Scale-Location Plots, the spread of the residuals increases as fitted values increase, this suggests some heteroscedasticity.
+This suggests that variability of residuals is not constant, which can affect the validity of the regression analysis.
+For the Residuals vs Leverage Plots, we can see a presence of influential observations, which can affect the model's coefficients and overall fit.
+All trends were similarly observered across all three models.
+To address these issues, summary statistics (R-squared and Mean squared error) were employed through a validation set to provide further insight into the models performance.
+
+```{r, echo=FALSE}
+# create first linear model: Multiple Regression 
+# Hypothesis H0 = B0 + B1X1 + ... +
+lm.ewr.full <- lm(dep_delay ~ humid + air_density + visib + wind_dir, data = delay_EWR)
+lm.lga.full <- lm(dep_delay ~ humid + air_density + visib + wind_dir, data = delay_LGA)
+lm.jfk.full <- lm(dep_delay ~ humid + air_density + visib + wind_dir, data = delay_JFK)
+
+summary(lm.ewr.full)
+summary(lm.lga.full)
+summary(lm.jfk.full)
+
+####### Model Selection########
+
+# select model: forward 
+lm.ewr.null <- lm(dep_delay ~ 1, data = delay_EWR)
+lm.lga.null <- lm(dep_delay ~ 1, data = delay_LGA)
+lm.jfk.null <- lm(dep_delay ~ 1, data = delay_JFK)
+
+# forward selection for EWR
+fwd.ewr <- stepAIC(lm.ewr.null, scope= list(lower = lm.ewr.null, upper = lm.ewr.full), data = delay_EWR, direction = "forward")
+
+# Forward selection for LGA
+fwd.lga <- stepAIC(lm.lga.null, scope= list(lower = lm.lga.null, upper = lm.lga.full), data = delay_LGA, direction = "forward")
+
+fwd.jfk <- stepAIC(lm.jfk.null, scope= list(lower = lm.jfk.null, upper = lm.jfk.full), data = delay_JFK, direction = "forward")
+
+lm.ewr.01 <- lm(dep_delay~ humid, data = delay_EWR)
+lm.lga.01 <- lm(dep_delay ~ humid + wind_dir, data = delay_LGA)
+lm.jfk.01 <- lm(dep_delay ~ visib + wind_dir, data = delay_JFK)
+
+summary(lm.ewr.01)
+summary(lm.lga.01)
+summary(lm.jfk.01)
+
+####### Model Fit########
+# Provide graphical summary of model 
+# R^2 if closer to 1 a good fit is suggested
+# Lower RSE suggests a good fit 
+# provide residual plots 
+par(mfrow = c(2,2))
+plot(lm.ewr.01)
+
+par(mfrow = c(2,2))
+plot(lm.lga.01)
+
+par(mfrow = c(2,2))
+plot(lm.jfk.01)
+```
+
+**Validation Fit** To evaluate predictive performance of the models, predictions were assesed using a validation set, with metrics such as Mean Squared Error (MSE) and adjusted R-squared values being calculated for both the training and test sets.
+Lower MSE values indicate better model performance.
+In this analysis, the models 'lm.ewr01', 'lm.lga01', and 'lm.fjk01' all exhibited lower test MSE compared to the full models.
+However, all models demonstrated low adjusted R-squared values, indicating potential issues with model fit or data quality.
+
+When examining the variance explained by the models, it was found that approximately 2.35% of the variance in flight delays at Newark Liberty Airport is explained by humidity.
+For LaGuardia Airport, about 2.10% of the variance is explained by humidity and wind direction.
+For John F. Kennedy Airport, approximately 3.65% of the variance is explained by visibility and wind direction.
+All models indicate additional variables might be influenced by other factors.
+
+Overall, while the models provide some predictive capability the low adjusted R-squared values suggest that further adjustments and inclusion of additional predictors could enhance the models performance.
+
+```{r, echo=FALSE}
+#### Validation Set for all airport models 
+calculateMSE <- function(y, yhat) {
+  # Your code here
+  sq_diff <- (y - yhat)^2
+  mean(sq_diff)
+}
+
+calculateR2adj <- function(y, yhat, p) {
+  # Your code here
+  tss <- sum((y- mean(y))^2)
+  rss <- sum((y - yhat)^2)
+  r_sq <- 1 - (rss / tss)
+  n <-length(y)
+  r_sq_adj <- 1 - ((n - 1)*(1 - r_sq)) / (n - p - 1)
+  r_sq_adj
+}
+
+# Cross Validation 
+set.seed(167) # set the seed so the analysis is reproducible
+## EWR
+train.idx <- sample(1:nrow(delay_EWR), 800) # random sample the training data index
+train <- delay_EWR[train.idx, ] # training set
+test <- delay_EWR[-train.idx, ] # validation/test set
+
+## LGA
+lga_train.idx <- sample(1:nrow(delay_LGA), 800) # random sample the training data index
+lga_train <- delay_LGA[lga_train.idx, ] # training set
+lga_test <- delay_LGA[-lga_train.idx, ] # validation/test set
+
+## JFK
+jfk_train.idx <- sample(1:nrow(delay_JFK), 800) # random sample the training data index
+jfk_train <- delay_JFK[jfk_train.idx, ] # training set
+jfk_test <- delay_JFK[-jfk_train.idx, ] # validation/test set
+
+###### fit model on training sets ####################
+lm.ewr.full.train <- lm(dep_delay ~ humid + air_density + visib + wind_dir, train)
+lm.ewr.01.train <- lm(dep_delay~ humid, train)
+
+#LGA model on training sets 
+lm.lga.full.train <- lm(dep_delay ~ humid + air_density + visib + wind_dir, lga_train)
+lm.lga.01.train <- lm(dep_delay~ humid + wind_dir, lga_train)
+
+#JFK model on training sets 
+lm.jfk.full.train <- lm(dep_delay ~ humid + air_density + visib + wind_dir, jfk_train)
+lm.jfk.01.train <- lm(dep_delay~ visib + wind_dir, jfk_train)
+
+###### predictions for training and test############ 
+train.pred.full <- predict(lm.ewr.full.train, train)
+test.pred.full <- predict(lm.ewr.full.train, test)
+
+train.pred.ewr01 <- predict(lm.ewr.01.train, train)
+test.pred.ewr01 <- predict(lm.ewr.01.train, test)
+
+### LGA
+lga.train.pred.full <- predict(lm.lga.full.train, train)
+lga.test.pred.full <- predict(lm.lga.full.train, test)
+
+train.pred.lga01 <- predict(lm.lga.01.train, train)
+test.pred.lga01 <- predict(lm.lga.01.train, test)
+
+### JFK
+jfk.train.pred.full <- predict(lm.jfk.full.train, train)
+jfk.test.pred.full <- predict(lm.jfk.full.train, test)
+
+train.pred.jfk01 <- predict(lm.jfk.01.train, train)
+test.pred.jfk01 <- predict(lm.jfk.01.train, test)
+
+
+############calculate MSE and r_sq for full model##########
+train.mse.full <- calculateMSE(delay_EWR$dep_delay, train.pred.full)
+test.mse.full <- calculateMSE(delay_EWR$dep_delay, test.pred.full)
+
+p.full <- length(coef(lm.ewr.full)) - 1
+train.r2adj.full <- calculateR2adj(train$dep_delay, train.pred.full, p.full)
+test.r2adj.full <- calculateR2adj(test$dep_delay, test.pred.full, p.full)
+
+##LGA
+lga.train.mse.full <- calculateMSE(delay_LGA$dep_delay, lga.train.pred.full)
+lga.test.mse.full <- calculateMSE(delay_LGA$dep_delay, lga.test.pred.full)
+
+lga.p.full <- length(coef(lm.lga.full)) - 1
+lga.train.r2adj.full <- calculateR2adj(lga_train$dep_delay, lga.train.pred.full, lga.p.full)
+lga.test.r2adj.full <- calculateR2adj(lga_test$dep_delay, lga.test.pred.full, lga.p.full)
+
+##JFK
+jfk.train.mse.full <- calculateMSE(delay_JFK$dep_delay, jfk.train.pred.full)
+jfk.test.mse.full <- calculateMSE(delay_JFK$dep_delay, jfk.test.pred.full)
+
+jfk.p.full <- length(coef(lm.jfk.full)) - 1
+jfk.train.r2adj.full <- calculateR2adj(jfk_train$dep_delay, jfk.train.pred.full, jfk.p.full)
+jfk.test.r2adj.full <- calculateR2adj(jfk_test$dep_delay, jfk.test.pred.full, jfk.p.full)
+
+############## calc MSE and r_sq for fwd model ##########
+train.mse.ewr01 <- calculateMSE(delay_EWR$dep_delay, train.pred.ewr01)
+test.mse.ewr01 <- calculateMSE(delay_EWR$dep_delay, test.pred.ewr01)
+
+p.ewr01 <- length(coef(lm.ewr.01)) - 1
+train.r2adj.ewr01 <- calculateR2adj(train$dep_delay, train.pred.ewr01, p.ewr01)
+test.r2adj.ewr01 <- calculateR2adj(train$dep_delay, test.pred.ewr01, p.ewr01)
+
+#LGA
+train.mse.lga01 <- calculateMSE(delay_LGA$dep_delay, train.pred.lga01)
+test.mse.lga01 <- calculateMSE(delay_LGA$dep_delay, test.pred.lga01)
+
+p.lga01 <- length(coef(lm.lga.01)) - 1
+train.r2adj.lga01 <- calculateR2adj(lga_train$dep_delay, train.pred.lga01, p.lga01)
+test.r2adj.lga01 <- calculateR2adj(lga_train$dep_delay, test.pred.lga01, p.lga01)
+
+#JFK
+train.mse.jfk01 <- calculateMSE(delay_JFK$dep_delay, train.pred.jfk01)
+test.mse.jfk01 <- calculateMSE(delay_JFK$dep_delay, test.pred.jfk01)
+
+p.jfk01 <- length(coef(lm.jfk.01)) - 1
+train.r2adj.jfk01 <- calculateR2adj(jfk_train$dep_delay, train.pred.jfk01, p.jfk01)
+test.r2adj.jfk01 <- calculateR2adj(jfk_train$dep_delay, test.pred.jfk01, p.jfk01)
+
+validation_results <- data.frame(
+  Model = c("lm.ewr.full", "lm.ewr01", "lm.lga.full", "lm.lga01", "lm.jfk.full", "lm.jfk01"), 
+  Training.MSE = c(train.mse.full, train.mse.ewr01, lga.train.mse.full, train.mse.lga01, jfk.train.mse.full, train.mse.jfk01),
+  TEST.MSE = c(test.mse.full, test.mse.ewr01),
+  Training.Adj.R_sq = c(train.r2adj.full, train.r2adj.ewr01, lga.train.r2adj.full, train.r2adj.lga01, jfk.train.r2adj.full, train.r2adj.jfk01),
+  Test.Adj.R_sq = c(test.r2adj.full, test.r2adj.ewr01, lga.test.r2adj.full, test.r2adj.lga01, jfk.test.r2adj.full, test.r2adj.jfk01)
+)
+
+validation_results
+```
+
+```{r, echo=FALSE}
+airport_summary_data <- data.frame(
+  Airport = c("EWR", "LGA", "JFK"),
+  Model = c("lm.ewr.01" , "lm.lga.01", "lm.jfk.01"),
+  Significant_Predictors = c("humid", 'humid, wind_dir', 'visb, wind_dir'),
+  Adjusted_R_squared = c(0.02354, 0.02106, 0.03648),
+  Residual_Standard_Error = c(50.57, 52.45, 43.63)
+)
+
+airport_summary_data
+```
+
+```{r, echo=FALSE}
+# Visuals confidence intervals 
+# NEWAK LIBERTY AIRPORT
+predictions.ewr <- predict(lm.ewr.01, delay_EWR, interval = "prediction")
+plot_ewr <- data.frame(
+  Actual = delay_EWR$dep_delay,
+  Predicted = predictions.ewr[, "fit"], 
+  Lower = predictions.ewr[, "lwr"],
+  Upper = predictions.ewr[, "upr"]
+)
+# LaGuardia Airport
+predictions.lga <- predict(lm.lga.01, delay_LGA, interval = "prediction")
+plot_lga <- data.frame(
+  Actual = delay_LGA$dep_delay,
+  Predicted = predictions.lga[, "fit"], 
+  Lower = predictions.lga[, "lwr"],
+  Upper = predictions.lga[, "upr"]
+)
+# John F. Kennedy Airport
+predictions.jfk <- predict(lm.jfk.01, delay_JFK, interval = "prediction")
+plot_jfk <- data.frame(
+  Actual = delay_JFK$dep_delay,
+  Predicted = predictions.jfk[, "fit"], 
+  Lower = predictions.jfk[, "lwr"],
+  Upper = predictions.jfk[, "upr"]
+)
+
+ewr_pred <- ggplot(plot_ewr, aes(x = Actual)) +
+  geom_point(aes(y = Predicted), color = "goldenrod") +
+  geom_line(aes(y = Lower), linetype = "dashed", color = "cadetblue4") +
+  geom_line(aes(y = Upper), linetype = "dashed", color = "red4") +
+  labs(title = "Newark Liberty Airport", 
+       x = "Actual Values", 
+       y = "Predicted Values") +
+  theme_minimal()
+
+lga_pred <- ggplot(plot_lga, aes(x = Actual)) +
+  geom_point(aes(y = Predicted), color = "goldenrod") +
+  geom_line(aes(y = Lower), linetype = "dashed", color = "cadetblue4") +
+  geom_line(aes(y = Upper), linetype = "dashed", color = "red4") +
+  labs(title = "LaGuardia Airport", 
+       x = "Actual Values", 
+       y = "Predicted Values") +
+  theme_minimal()
+
+jfk_pred <- ggplot(plot_jfk, aes(x = Actual)) +
+  geom_point(aes(y = Predicted), color = "goldenrod") +
+  geom_line(aes(y = Lower), linetype = "dashed", color = "cadetblue4") +
+  geom_line(aes(y = Upper), linetype = "dashed", color = "red4") +
+  labs(title = "John F. Kennedy Airport", 
+       x = "Actual Values", 
+       y = "Predicted Values") +
+  theme_minimal()
+
+combined_plot <- plot_grid(ewr_pred, lga_pred, jfk_pred)
+combined_plot
+
+```
+
+#### 3. Summary of Findings
+
+Our findings indicate that environmental factors such as humidity, visibility, and wind direction do have significant effects on flight delays.
+However, these effects differ across airports.
+Additionally, The models for each airport showed varying values with adjust R-squared values indicating the proportion of variance in flight delays explained by the models.
+The residual error provide information concerning the accuracy of model predictions.
+
+At Newark Liberty Airport, humidity was identified as a significant predictor of departure delays, with a p-value of less than 0.05.
+For LaGuardia Airport, both humidity and wind direction were significant predictors, also with p-values less than 0.05.
+At John F. Kennedy Airport, visibility and wind direction emerged as significant predictors of flight delays, again with p-values less than 0.05.
+Based on the analysis, we reject the null hypothesis.
+As the evidence suggests that at least one of the environmental factors significantly affects flight delays across airports.
+
+```{r, echo=FALSE}
+summary_data <- data.frame(
+  Airport = c("EWR", "JFK", "LGA"),
+  Model = c("lm.ewr.01", "lm.jfk.01", "lm.lga.01"),
+  Significant.Predictors = c("humid", "humid, wind_dir", "visib, wind_dir "),
+  Intercept = c("15.5746 (p < 0.01)", "80.38946 (p < 0.001)", "18.1891 (p = 0.05)"),
+  Predictor.Estimates = c("humid: 0.5035 (p < 0.001)", "visib: -2.87115 (p < 0.001), wind_dir: -0.07205 (p < 0.001)", "humid: 0.49128 (p < 0.001), wind_dir: -0.01727 (p = 0.42)"),
+  R.squared = c(0.02452, 0.0384, 0.02302),
+  Adjusted.R.squared = c(0.02354, 0.03648, 0.02106),
+  F.statistic = c("25.09 (p < 0.001)", "19.91 (p < 0.001)", "11.74 (p < 0.001)"),
+  Residual.Standard.Error = c(50.57, 43.63, 52.45)
+)
+
+# Display the summary table using kable
+kable(summary_data, caption = "Summary of Findings for Each Model", align = "l")
+```
+
+\newpage
